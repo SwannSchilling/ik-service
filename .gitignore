@@ -1,0 +1,12 @@
+# build artifacts
+build/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+pytest-cache-*/
+
+# crash forensics output (VEH handler writes this to the CWD)
+crash_stack.txt
