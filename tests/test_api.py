@@ -264,3 +264,53 @@ def test_lib_serves_p5_and_blocks_traversal():
     assert len(r.content) > 1_000_000  # the full vendored p5 build
     assert client.get("/lib/..%2Fapp.py").status_code == 404
     assert client.get("/lib/definitely_missing.js").status_code == 404
+
+
+def test_model_serves_urdf_and_blocks_traversal():
+    r = client.get("/model/arm7.urdf")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/xml")
+    assert '<robot name="arm7">' in r.text
+    assert client.get("/model/meshes/README.md").status_code == 200
+    assert client.get("/model/..%2Fweb%2Findex.html").status_code == 404
+    assert client.get("/model/missing.urdf").status_code == 404
+
+
+def test_model_urdf_chain_matches_solver_arm7():
+    """The URDF the viewer renders must mirror the C++ solver chain
+    (libpick_ik_core/tests/arm7_fk.hpp): 7 revolute joints + fixed tool
+    offset, same origins/limits, all axes z."""
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(client.get("/model/arm7.urdf").text)
+    links = {l.get("name") for l in root.findall("link")}
+    joints = root.findall("joint")
+    assert len(links) == 9  # base + 7 + tool_link
+    assert len(joints) == 8  # 7 revolute + 1 fixed tool offset
+    revs = [j for j in joints if j.get("type") == "revolute"]
+    fixed = [j for j in joints if j.get("type") == "fixed"]
+    assert len(revs) == 7 and len(fixed) == 1
+    origins = [j.find("origin").get("xyz") for j in revs]
+    assert origins == [
+        "0 0 0", "0 0 0.34", "0 0 0", "0 0 0.40",
+        "0 0 0", "0 0 0.40", "0 0 0",
+    ]
+    limits = [
+        (j.find("limit").get("lower"), j.find("limit").get("upper")) for j in revs
+    ]
+    assert limits == [
+        ("-3.14159", "3.14159"), ("-2.09", "2.09"), ("-3.14159", "3.14159"),
+        ("-2.09", "2.09"), ("-3.14159", "3.14159"), ("-2.09", "2.09"),
+        ("-3.14159", "3.14159"),
+    ]
+    assert all(
+        j.find("axis").get("xyz") == "0 0 1" for j in revs
+    )
+    tool = fixed[0]
+    assert tool.find("origin").get("xyz") == "0 0 0.126"
+    # chain: base -> link1 -> ... -> link7 -> tool_link
+    chain = ["base_link"]
+    by_parent = {j.find("parent").get("link"): j for j in joints}
+    while by_parent.get(chain[-1]) is not None:
+        chain.append(by_parent[chain[-1]].find("child").get("link"))
+    assert chain == ["base_link", *[f"link{i}" for i in range(1, 8)], "tool_link"]

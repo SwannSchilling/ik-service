@@ -312,3 +312,27 @@ def web_asset(filename: str) -> FileResponse:
         else "application/octet-stream"
     )
     return FileResponse(path, media_type=media)
+
+
+MODEL_DIR = Path(__file__).resolve().parent.parent / "robot_description"
+
+
+@app.get("/model/{path:path}")
+def model_asset(path: str) -> FileResponse:
+    """Robot description folder (URDF + meshes) for the web viewer.
+
+    Served read-only so robot geometry can be iterated without touching
+    code — see robot_description/README.md.
+    """
+    full = (MODEL_DIR / path).resolve()
+    if not str(full).startswith(str(MODEL_DIR.resolve())) or not full.is_file():
+        raise HTTPException(status_code=404, detail="not found")
+    media = {
+        ".urdf": "application/xml",
+        ".xacro": "application/xml",
+        ".stl": "model/stl",
+        ".json": "application/json",
+        ".md": "text/markdown",
+        ".txt": "text/plain",
+    }.get(full.suffix.lower(), "application/octet-stream")
+    return FileResponse(full, media_type=media)

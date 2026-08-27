@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<!--
+  test_mesh — minimal 2-joint model that exercises the STL mesh path
+  of the web viewer. Load it at:
+      http://127.0.0.1:8081/?model=test_mesh
+  The blue column comes from primitives; the cube at the "shoulder"
+  is meshes/sample_cube.stl (0.1 m, binary STL).
+
+  NOTE: this is NOT the solver's chain — it exists to prove that mesh
+  files load and render. A model with a different joint topology will
+  render at the FK frames it happens to have (the viewer maps
+  link_i -> frames[i-1]), so treat it as a visual test only.
+-->
+<robot name="test_mesh">
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.17" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.34" radius="0.10"/>
+      </geometry>
+      <material name="pedestal">
+        <color rgba="0.235 0.290 0.361 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14159" upper="3.14159" effort="100" velocity="2.17"/>
+  </joint>
+
+  <link name="link1">
+    <visual>
+      <origin xyz="0 0 0.17" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.08 0.08 0.34"/>
+      </geometry>
+      <material name="link_blue">
+        <color rgba="0.302 0.639 1 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="0 0 0.34" rpy="-1.5707963 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.09" upper="2.09" effort="100" velocity="2.17"/>
+  </joint>
+
+  <!-- mesh link: STL cube at the shoulder pivot -->
+  <link name="link2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/sample_cube.stl" scale="1 1 1"/>
+      </geometry>
+      <material name="mesh_green">
+        <color rgba="0.243 0.812 0.557 1"/>
+      </material>
+    </visual>
+  </link>
+
+</robot>
