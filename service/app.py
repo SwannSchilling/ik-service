@@ -66,9 +66,14 @@ class SolveIn(BaseModel):
     options: dict = Field(
         default_factory=dict,
         description="Optional: position_threshold, orientation_threshold, "
-                    "cost_threshold, position_scale, rotation_scale, plus "
-                    "solver-specific max_passes/damping (ccd), max_time/"
-                    "max_iterations (gradient), num_threads/max_time (memetic).",
+                    "cost_threshold, position_scale, rotation_scale, "
+                    "minimal_displacement_weight, plus every solver-specific "
+                    "option: ccd max_passes/damping/epsilon; gradient "
+                    "step_size/min_cost_delta/max_time/max_iterations/"
+                    "stop_optimization_on_valid_solution; memetic elite_size/"
+                    "population_size/wipeout_fitness_tol/max_generations/"
+                    "max_time/num_threads/stop_optimization_on_valid_solution/"
+                    "stop_on_first_soln.",
     )
 
 
@@ -86,20 +91,39 @@ class SolveOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _make_solver(name: str, options: dict) -> pickik.IkSolver:
+    # Every solver option of the `pickik` binding is forwarded; the
+    # defaults here intentionally differ from the binding's where they
+    # matter for a service (wider budgets, 4 parallel memetic species).
     if name == "ccd":
         return pickik.CcdSolver(
             max_passes=int(options.get("max_passes", 600)),
             damping=float(options.get("damping", 0.1)),
+            epsilon=float(options.get("epsilon", 1e-8)),
         )
     if name == "gradient":
         return pickik.PickIkGradientSolver(
+            step_size=float(options.get("step_size", 0.0001)),
+            min_cost_delta=float(options.get("min_cost_delta", 1e-12)),
             max_time=float(options.get("max_time", 2.0)),
             max_iterations=int(options.get("max_iterations", 2000)),
+            stop_optimization_on_valid_solution=bool(
+                options.get("stop_optimization_on_valid_solution", True)),
         )
     if name == "memetic":
         return pickik.PickIkMemeticSolver(
-            num_threads=int(options.get("num_threads", 4)),
+            elite_size=int(options.get("elite_size", 4)),
+            population_size=int(options.get("population_size", 16)),
+            wipeout_fitness_tol=float(options.get("wipeout_fitness_tol", 1e-5)),
+            max_generations=int(options.get("max_generations", 100)),
             max_time=float(options.get("max_time", 2.0)),
+            # 1 by default: every FK of every species goes through the GIL
+            # pump on one Python thread, so extra species only add FK
+            # traffic (measured: nt=1/elite~2 beats nt=4 across the board,
+            # e.g. target B 55 ms vs 360 ms). Native FK hosts can raise it.
+            num_threads=int(options.get("num_threads", 1)),
+            stop_optimization_on_valid_solution=bool(
+                options.get("stop_optimization_on_valid_solution", True)),
+            stop_on_first_soln=bool(options.get("stop_on_first_soln", True)),
         )
     raise HTTPException(status_code=400, detail=f"unknown solver '{name}'")
 
@@ -129,7 +153,18 @@ def _target_to_pose(target: TargetIn) -> np.ndarray:
             raise HTTPException(
                 status_code=422, detail="target.quaternion must be [x, y, z, w]"
             )
-        pose[:3, :3] = _quat_to_matrix(*target.quaternion)
+        q = np.asarray(target.quaternion, dtype=float)
+        # Normalize: callers send rounded quaternions (e.g. 0.7071 for
+        # 1/sqrt(2)). An unnormalized quaternion yields a slightly
+        # non-orthogonal rotation matrix (~0.006 rad off for 4-decimal
+        # input) — unreachable under the default 1e-3 rad orientation
+        # threshold, which made every full-pose goal "unsolvable".
+        norm = float(np.linalg.norm(q))
+        if norm < 1e-12:
+            raise HTTPException(
+                status_code=422, detail="target.quaternion must be non-zero"
+            )
+        pose[:3, :3] = _quat_to_matrix(*(q / norm).tolist())
     return pose
 
 
@@ -183,6 +218,9 @@ def solve(req: SolveIn) -> SolveOut:
     options.position_threshold = float(req.options.get("position_threshold", 1e-3))
     options.cost_threshold = float(req.options.get("cost_threshold", 1e-3))
     options.position_scale = float(req.options.get("position_scale", 1.0))
+    options.minimal_displacement_weight = float(
+        req.options.get("minimal_displacement_weight", 0.0)
+    )
     if position_only:
         options.orientation_threshold = None
         options.rotation_scale = float(req.options.get("rotation_scale", 0.0))
