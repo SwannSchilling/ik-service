@@ -255,3 +255,12 @@ def test_index_serves_demo():
     r = client.get("/")
     assert r.status_code == 200
     assert "pick_ik service" in r.text
+
+
+def test_lib_serves_p5_and_blocks_traversal():
+    r = client.get("/lib/p5.js")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/javascript")
+    assert len(r.content) > 1_000_000  # the full vendored p5 build
+    assert client.get("/lib/..%2Fapp.py").status_code == 404
+    assert client.get("/lib/definitely_missing.js").status_code == 404

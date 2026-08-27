@@ -298,3 +298,17 @@ def solve(req: SolveIn) -> SolveOut:
 @app.get("/")
 def index() -> FileResponse:
     return FileResponse(WEB_DIR / "index.html")
+
+
+@app.get("/lib/{filename}")
+def web_asset(filename: str) -> FileResponse:
+    """Static assets for the web demo (vendored p5.js — no CDN)."""
+    path = (WEB_DIR / "lib" / filename).resolve()
+    if not str(path).startswith(str((WEB_DIR / "lib").resolve())) or not path.is_file():
+        raise HTTPException(status_code=404, detail="not found")
+    media = (
+        "text/javascript"
+        if filename.endswith((".js", ".mjs"))
+        else "application/octet-stream"
+    )
+    return FileResponse(path, media_type=media)
