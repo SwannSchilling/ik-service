@@ -136,6 +136,95 @@ def test_solve_memetic_options_forwarded():
     assert r.json()["success"] is True
 
 
+def test_solve_joint_angle_targets():
+    """Per-joint angle targets: J5 (forearm roll, index 4) pulled 0.5 rad
+    off its natural value. J5 is near-null for the position, so the strict
+    position threshold stays met while the joint tracks its target
+    (load-bearing joints like J4 cannot — see the ctest notes)."""
+    plain = client.post("/solve", json={
+        "solver": "gradient",
+        "target": {"position": [0.45, 0.25, 0.45]},
+        "options": {"max_time": 2.0, "max_iterations": 2000},
+    }).json()
+    assert plain["success"] is True
+    j5_target = plain["q"][4] + 0.5
+    targets = [None, None, None, None, j5_target, None, None]
+    targeted = client.post("/solve", json={
+        "solver": "gradient",
+        "target": {"position": [0.45, 0.25, 0.45]},
+        "options": {
+            "joint_angle_targets": targets,
+            "joint_target_weight": 0.3,
+            "cost_threshold": 0.2,  # goal check needs room (see solver.hpp)
+            "max_time": 2.0,
+            "max_iterations": 2000,
+        },
+    }).json()
+    assert targeted["success"] is True
+    assert targeted["position_error"] < 5e-3
+    assert abs(targeted["q"][4] - j5_target) < 0.05
+    assert abs(targeted["q"][4] - j5_target) < abs(plain["q"][4] - j5_target)
+    assert targeted["q"] != plain["q"]
+
+
+def test_solve_look_at():
+    """Look-at goal: the tip's +X axis points closer at the point than in
+    a plain solve."""
+    import math
+
+    point = [1.5, 0.0, 0.45]
+
+    def alignment(q):
+        fk = client.post("/fk", json={"q": q}).json()
+        t = fk["tool0"]["position_m"]
+        p = [c - r for c, r in zip(point, t)]
+        norm = math.sqrt(sum(c * c for c in p))
+        # tool0 rotation row 0 = tip +X axis in base frame
+        frame = fk["frames"][-1]
+        x_axis = frame[0][:3]
+        return sum(x * c / norm for x, c in zip(x_axis, p))
+
+    plain = client.post("/solve", json={
+        "solver": "gradient",
+        "target": {"position": [0.45, 0.25, 0.45]},
+        "options": {"max_time": 2.0, "max_iterations": 2000},
+    }).json()
+    looking = client.post("/solve", json={
+        "solver": "gradient",
+        "target": {"position": [0.45, 0.25, 0.45]},
+        "options": {
+            "look_at": {"point": point, "axis": [1.0, 0.0, 0.0]},
+            "look_at_weight": 0.05,
+            "cost_threshold": 0.05,  # goal check needs room (see solver.hpp)
+            "max_time": 2.0,
+            "max_iterations": 2000,
+        },
+    }).json()
+    assert plain["success"] is True
+    assert looking["success"] is True
+    assert looking["position_error"] < 5e-3
+    assert alignment(looking["q"]) > alignment(plain["q"])
+    assert looking["q"] != plain["q"]
+
+
+def test_solve_joint_targets_bad_length():
+    r = client.post("/solve", json={
+        "solver": "gradient",
+        "target": {"position": [0.45, 0.25, 0.45]},
+        "options": {"joint_angle_targets": [0.1, 0.2, 0.3]},
+    })
+    assert r.status_code == 422
+
+
+def test_solve_look_at_bad_point():
+    r = client.post("/solve", json={
+        "solver": "gradient",
+        "target": {"position": [0.45, 0.25, 0.45]},
+        "options": {"look_at": {"point": [0.1, 0.2]}},
+    })
+    assert r.status_code == 422
+
+
 def test_solve_custom_seed():
     r = client.post("/solve", json={
         "solver": "ccd",

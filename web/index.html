@@ -70,6 +70,45 @@
       <label for="passes">CCD passes (ccd solver only)</label>
       <input type="number" id="passes" value="600" step="50">
 
+      <label>memetic: threads / elite / max time (s)</label>
+      <div class="row">
+        <div><input type="number" id="threads" value="1" step="1"></div>
+        <div><input type="number" id="elite" value="2" step="1"></div>
+        <div><input type="number" id="memtime" value="0.6" step="0.1"></div>
+      </div>
+
+      <label>secondary objective weights (0 = off; realistic md ~0.01, jt ~0.1–0.5, la ~0.01–0.1)</label>
+      <div class="row">
+        <div><input type="number" id="mdw" value="0" step="0.001" title="minimal displacement weight"></div>
+        <div><input type="number" id="jtw" value="0" step="0.01" title="joint angle targets weight"></div>
+        <div><input type="number" id="law" value="0" step="0.005" title="look-at weight"></div>
+      </div>
+
+      <label>joint angle targets (rad, empty = no target)</label>
+      <div class="row">
+        <div><input type="number" id="jt1" step="0.1" placeholder="J1"></div>
+        <div><input type="number" id="jt2" step="0.1" placeholder="J2"></div>
+        <div><input type="number" id="jt3" step="0.1" placeholder="J3"></div>
+        <div><input type="number" id="jt4" step="0.1" placeholder="J4"></div>
+        <div><input type="number" id="jt5" step="0.1" placeholder="J5"></div>
+        <div><input type="number" id="jt6" step="0.1" placeholder="J6"></div>
+        <div><input type="number" id="jt7" step="0.1" placeholder="J7"></div>
+      </div>
+
+      <label>look-at point (mm) + tip axis</label>
+      <div class="row">
+        <div><input type="number" id="lx" placeholder="x" step="10"></div>
+        <div><input type="number" id="ly" placeholder="y" step="10"></div>
+        <div><input type="number" id="lz" placeholder="z" step="10"></div>
+        <div>
+          <select id="laxis">
+            <option value="+X" selected>+X</option>
+            <option value="+Y">+Y</option>
+            <option value="+Z">+Z</option>
+          </select>
+        </div>
+      </div>
+
       <button id="go">Solve</button>
       <div class="result" id="result">Press Solve — the p5 POC's two cross-check
 targets are 300 / 200 / 450 and 450 / 250 / 450 mm.</div>
@@ -173,7 +212,30 @@ async function solveAndDraw() {
     }
     body.target.quaternion = parts;
   }
-  if (body.solver === "ccd") body.options = { max_passes: + $("passes").value };
+  const options = {};
+  if (body.solver === "ccd") options.max_passes = + $("passes").value;
+  if (body.solver === "memetic") {
+    options.num_threads = + $("threads").value;
+    options.elite_size = + $("elite").value;
+    options.max_time = + $("memtime").value;
+  }
+  const mdw = + $("mdw").value;
+  if (mdw > 0) options.minimal_displacement_weight = mdw;
+  const jats = ["jt1", "jt2", "jt3", "jt4", "jt5", "jt6", "jt7"]
+    .map((id) => { const v = $(id).value.trim(); return v === "" ? null : +v; });
+  const jtw = + $("jtw").value;
+  if (jtw > 0 && jats.some((v) => v !== null)) {
+    options.joint_angle_targets = jats;
+    options.joint_target_weight = jtw;
+  }
+  const la = [+$("lx").value, +$("ly").value, +$("lz").value];
+  const law = + $("law").value;
+  if (law > 0 && la.every((v) => Number.isFinite(v))) {
+    options.look_at = { point: la.map((v) => v / 1000),
+      axis: { "+X": [1, 0, 0], "+Y": [0, 1, 0], "+Z": [0, 0, 1] }[$("laxis").value] };
+    options.look_at_weight = law;
+  }
+  if (Object.keys(options).length) body.options = options;
   const r = await fetch("/solve", { method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body) });

@@ -67,8 +67,11 @@ class SolveIn(BaseModel):
         default_factory=dict,
         description="Optional: position_threshold, orientation_threshold, "
                     "cost_threshold, position_scale, rotation_scale, "
-                    "minimal_displacement_weight, plus every solver-specific "
-                    "option: ccd max_passes/damping/epsilon; gradient "
+                    "minimal_displacement_weight, joint_angle_targets "
+                    "(7 values, null = off) + joint_target_weight, look_at "
+                    "{'point': [x,y,z] m, 'axis': [x,y,z]} + look_at_weight; "
+                    "plus every solver-specific option: ccd "
+                    "max_passes/damping/epsilon; gradient "
                     "step_size/min_cost_delta/max_time/max_iterations/"
                     "stop_optimization_on_valid_solution; memetic elite_size/"
                     "population_size/wipeout_fitness_tol/max_generations/"
@@ -93,7 +96,8 @@ class SolveOut(BaseModel):
 def _make_solver(name: str, options: dict) -> pickik.IkSolver:
     # Every solver option of the `pickik` binding is forwarded; the
     # defaults here intentionally differ from the binding's where they
-    # matter for a service (wider budgets, 4 parallel memetic species).
+    # matter for a service (wider budgets; single memetic species because
+    # a Python FK serializes on the GIL pump — see the Phase-0 sweep).
     if name == "ccd":
         return pickik.CcdSolver(
             max_passes=int(options.get("max_passes", 600)),
@@ -221,6 +225,43 @@ def solve(req: SolveIn) -> SolveOut:
     options.minimal_displacement_weight = float(
         req.options.get("minimal_displacement_weight", 0.0)
     )
+
+    # Per-joint angle targets: [null|number x 7]; null = no target.
+    jats = req.options.get("joint_angle_targets")
+    if jats is not None:
+        if not isinstance(jats, (list, tuple)) or len(jats) != 7:
+            raise HTTPException(
+                status_code=422, detail="joint_angle_targets must be 7 values (null or rad)"
+            )
+        options.joint_angle_targets = [
+            None if v is None else float(v) for v in jats
+        ]
+        options.joint_target_weight = float(
+            req.options.get("joint_target_weight", 0.0)
+        )
+
+    # Look-at target: {"point": [x, y, z] m, "axis": [x, y, z] (default +X)}.
+    la = req.options.get("look_at")
+    if la is not None:
+        if not isinstance(la, dict) or "point" not in la:
+            raise HTTPException(
+                status_code=422, detail="look_at must be {'point': [x, y, z] m}"
+            )
+        point = la["point"]
+        if not isinstance(point, (list, tuple)) or len(point) != 3:
+            raise HTTPException(
+                status_code=422, detail="look_at.point must be [x, y, z] meters"
+            )
+        axis = la.get("axis", [1.0, 0.0, 0.0])
+        if not isinstance(axis, (list, tuple)) or len(axis) != 3:
+            raise HTTPException(
+                status_code=422, detail="look_at.axis must be [x, y, z]"
+            )
+        options.look_at = pickik.LookAtTarget(
+            [float(v) for v in point], [float(v) for v in axis]
+        )
+        options.look_at_weight = float(req.options.get("look_at_weight", 0.0))
+
     if position_only:
         options.orientation_threshold = None
         options.rotation_scale = float(req.options.get("rotation_scale", 0.0))
