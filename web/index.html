@@ -157,13 +157,23 @@ const $ = (id) => document.getElementById(id);
  * frames[5] J6 pivot, frames[7] tool0 (the roll joints' pivots
  * coincide with their parents, so 4 segments describe the chain).
  *
+ * World scale: p5's WebGL world is pixel-scale at the default camera
+ * (1 unit ≈ 1 px) and its near-clip plane sits a few units ahead of
+ * the camera — a camera placed 2 "meters" away would clip the whole
+ * scene. So, like the p5 POC sketch, the model is drawn at
+ * SCALE px/m and the camera keeps a pixel-scale distance.
+ *
  * Orbit: drag = yaw/pitch, wheel = zoom; the preset buttons
  * (top/front/side/angled) set fixed camera angles.
  */
 
+const SCALE = 300;  // p5 world units (≈ px) per meter
 const scene = { frames: null, targetM: [0.45, 0.25, 0.45] };
-const view = { yaw: 0.9, pitch: 0.38, dist: 2.3 };
+const view = { yaw: 0.9, pitch: 0.38, dist: 2.3 };  // dist in meters
 let cv = null;
+
+// translation column of an FK frame, in world (px) units
+const fpos = (f) => [f[0][3] * SCALE, f[1][3] * SCALE, f[2][3] * SCALE];
 
 const VIEW_PRESETS = {
   top:    { yaw: 0.9, pitch: 1.42, dist: 2.0 },
@@ -177,6 +187,21 @@ function setView(name) {
   document.querySelectorAll(".preset").forEach((b) =>
     b.classList.toggle("active", b.dataset.view === name));
 }
+
+// console helper: resolve with the next rendered frame (RGBA, w*h*4)
+window.__captureFrame = () => new Promise((resolve) => {
+  const state = {
+    buf: new Uint8Array(cv.width * cv.height * 4),
+    done: false,
+  };
+  window.__captureJob = state;
+  const check = () => {
+    if (state.done) return resolve(state.buf);
+    requestAnimationFrame(check);
+  };
+  setTimeout(() => resolve(null), 3000); // safety: no frame within 3 s
+  requestAnimationFrame(check);
+});
 
 function startViewer() {
   const sketch = (p) => {
@@ -193,43 +218,48 @@ function startViewer() {
     const unit = (v) => { const n = Math.hypot(v[0], v[1], v[2]); return v.map((c) => c / n); };
 
     // Rotation R with columns [e1, e2, d] that maps +Z to direction d.
+    // e2 must be d x e1 (NOT e1 x d): that keeps the basis right-handed
+    // (det +1) — a left-handed "rotation" flips face winding and p5's
+    // backface culling then discards every box/sphere/cylinder/torus.
     const alignZ = (d) => {
       const ref = Math.abs(d[1]) < 0.99 ? [0, 1, 0] : [1, 0, 0];
       const e1 = unit([d[1] * ref[2] - d[2] * ref[1],
                        d[2] * ref[0] - d[0] * ref[2],
                        d[0] * ref[1] - d[1] * ref[0]]);
-      const e2 = [e1[1] * d[2] - e1[2] * d[1],
-                  e1[2] * d[0] - e1[0] * d[2],
-                  e1[0] * d[1] - e1[1] * d[0]];
+      const e2 = [d[1] * e1[2] - d[2] * e1[1],
+                  d[2] * e1[0] - d[0] * e1[2],
+                  d[0] * e1[1] - d[1] * e1[0]];
       return [e1[0], e1[1], e1[2], 0, e2[0], e2[1], e2[2], 0, d[0], d[1], d[2], 0, 0, 0, 0, 1];
     };
 
     p.draw = () => {
       p.background(13);
-      const eye = view.dist * [
-        Math.cos(view.pitch) * Math.sin(view.yaw),
-        Math.cos(view.pitch) * Math.cos(view.yaw),
-        Math.sin(view.pitch),
+      const D = view.dist * SCALE;
+      const eye = [
+        D * Math.cos(view.pitch) * Math.sin(view.yaw),
+        D * Math.cos(view.pitch) * Math.cos(view.yaw),
+        D * Math.sin(view.pitch),
       ];
-      p.camera(eye[0], eye[1], eye[2], 0, 0, 0.5, 0, 0, 1);
-      p.ambientLight(80, 80, 80);
-      p.directionalLight(160, 160, 170, 0.5, 0.4, -0.8);
+      p.camera(eye[0], eye[1], eye[2], 0, 0, 0.5 * SCALE, 0, 0, 1);
+      p.ambientLight(110, 110, 110);
+      p.directionalLight(190, 190, 200, 0.4, 0.5, -0.6);
+      p.directionalLight(80, 80, 90, -0.5, -0.4, 0.4);
 
       // ground grid on z = 0
       p.push();
-      p.stroke(38, 46, 58); p.strokeWeight(1);
+      p.stroke(44, 54, 68); p.strokeWeight(1);
       for (let i = -4; i <= 4; i++) {
-        p.line(i * 0.25, -1.0, 0, i * 0.25, 1.0, 0);
-        p.line(-1.0, i * 0.25, 0, 1.0, i * 0.25, 0);
+        p.line(i * 0.25 * SCALE, -SCALE, 0, i * 0.25 * SCALE, SCALE, 0);
+        p.line(-SCALE, i * 0.25 * SCALE, 0, SCALE, i * 0.25 * SCALE, 0);
       }
       p.pop();
 
       // base pedestal
       p.push();
-      p.translate(0, 0, 0.17);
+      p.translate(0, 0, 0.17 * SCALE);
       p.rotateX(p.HALF_PI);
-      p.noStroke(); p.fill(44, 55, 69);
-      p.cylinder(0.09, 0.11, 0.34, 32);
+      p.noStroke(); p.fill(60, 74, 92);
+      p.cylinder(0.09 * SCALE, 0.11 * SCALE, 0.34 * SCALE, 32);
       p.pop();
 
       if (scene.frames) {
@@ -237,46 +267,59 @@ function startViewer() {
         // segments: base->J2, J2->J4, J4->J6, J6->tool0
         const segs = [[F[0], F[1]], [F[1], F[3]], [F[3], F[5]], [F[5], F[7]]];
         for (const [a, b] of segs) {
-          const mid = [(a[0][3] + b[0][3]) / 2, (a[1][3] + b[1][3]) / 2, (a[2][3] + b[2][3]) / 2];
-          const dir = unit([b[0][3] - a[0][3], b[1][3] - a[1][3], b[2][3] - a[2][3]]);
+          const pa = fpos(a), pb = fpos(b);
+          const mid = [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (pa[2] + pb[2]) / 2];
+          const dir = unit([pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]]);
           const len =
-            Math.hypot(b[0][3] - a[0][3], b[1][3] - a[1][3], b[2][3] - a[2][3]);
+            Math.hypot(pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]);
           p.push();
           p.translate(mid[0], mid[1], mid[2]);
           p.applyMatrix(...alignZ(dir));
           p.noStroke();
-          if (len < 0.02) { p.sphere(0.05, 24, 16); }      // coincident pivots (roll joints)
+          if (len < 0.02 * SCALE) { p.sphere(0.05 * SCALE, 24, 16); }
           else {
             p.fill(77, 163, 255);
-            p.box(0.08, 0.08, len, 4, 4);
+            p.box(0.08 * SCALE, 0.08 * SCALE, len, 4, 4);
           }
           p.pop();
         }
         // joint spheres at the distinct pivots
-        p.noStroke(); p.fill(215, 224, 234);
+        p.noStroke(); p.fill(225, 232, 240);
         for (const i of [1, 3, 5]) {
+          const f = fpos(F[i]);
           p.push();
-          p.translate(F[i][0][3], F[i][1][3], F[i][2][3]);
-          p.sphere(0.045, 24, 16);
+          p.translate(f[0], f[1], f[2]);
+          p.sphere(0.05 * SCALE, 24, 16);
           p.pop();
         }
         // tool0 marker: green cross
-        const t = F[7];
+        const tp = fpos(F[7]);
         p.push();
-        p.translate(t[0][3], t[1][3], t[2][3]);
+        p.translate(tp[0], tp[1], tp[2]);
         p.stroke(62, 207, 142); p.strokeWeight(2);
-        const L = 0.035;
+        const L = 0.035 * SCALE;
         p.line(-L, 0, 0, L, 0, 0); p.line(0, -L, 0, 0, L, 0); p.line(0, 0, -L, 0, 0, L);
         p.pop();
       }
 
       // target marker: red ring
-      const t = scene.targetM;
       p.push();
-      p.translate(t[0], t[1], t[2]);
+      p.translate(scene.targetM[0] * SCALE,
+                  scene.targetM[1] * SCALE,
+                  scene.targetM[2] * SCALE);
       p.noFill(); p.stroke(255, 107, 107); p.strokeWeight(1.5);
-      p.torus(0.045, 0.004, 12, 32);
+      p.torus(0.045 * SCALE, 0.004 * SCALE, 12, 32);
       p.pop();
+
+      // debug hook: capture the rendered frame while it is still in the
+      // buffer (readPixels after compositing is undefined without
+      // preserveDrawingBuffer). Set window.__captureFrame() from the console.
+      if (window.__captureJob) {
+        const gl = p.drawingContext;
+        gl.readPixels(0, 0, cv.width, cv.height, gl.RGBA, gl.UNSIGNED_BYTE,
+                      window.__captureJob.buf);
+        window.__captureJob.done = true;
+      }
     };
   };
 
