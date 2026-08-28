@@ -14,14 +14,14 @@
   .wrap { max-width:1240px; margin:0 auto; padding:24px 20px 60px; }
   h1 { font-size:20px; font-weight:600; margin:0 0 4px; }
   .sub { color:var(--dim); margin:0 0 20px; font-size:13px; }
-  .grid { display:grid; grid-template-columns:220px 350px minmax(0,1fr);
+  .grid { display:grid; grid-template-columns:340px minmax(0,1fr) 300px;
           gap:16px; align-items:start; }
-  .poserow { display:grid; grid-template-columns:28px 1fr 52px; gap:8px;
-             align-items:center; margin:5px 0; }
-  .poserow .pname { color:var(--txt); font-weight:600; font-size:12px; }
-  .poserow .pread { color:var(--acc); font:11px Consolas, monospace;
-                    text-align:right; }
-  @media (max-width: 1100px) { .grid { grid-template-columns:220px minmax(0,1fr); }
+  .poseblock { margin:9px 0; }
+  .posehead { display:flex; justify-content:space-between; align-items:baseline;
+              margin:0 0 2px; }
+  .posehead .pname { color:var(--txt); font-weight:600; font-size:12px; }
+  .posehead .pread { color:var(--acc); font:11px Consolas, monospace; }
+  @media (max-width: 1150px) { .grid { grid-template-columns:340px minmax(0,1fr); }
     .view { grid-column:1 / -1; } }
   @media (max-width: 720px) { .grid { grid-template-columns:1fr; }
     .view { grid-column:auto; } }
@@ -72,13 +72,6 @@
      <code>POST /solve</code>.</p>
 
   <div class="grid">
-    <div class="panel" id="posePanel">
-      <h2>Joint pose (FK)</h2>
-      <div id="poseRows"></div>
-      <p class="hint">drag to pose the arm live via <code>POST /fk</code> —
-      sliders snap to the last solved pose after a Solve.</p>
-    </div>
-
     <div class="panel" id="solvePanel">
       <h2>Solve</h2>
       <label for="solver">Solver</label>
@@ -173,6 +166,13 @@
       </div>
       <div id="view3d"></div>
       <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel" id="posePanel">
+      <h2>Joint pose (FK)</h2>
+      <div id="poseRows"></div>
+      <p class="hint">drag to pose the arm live via <code>POST /fk</code> —
+      sliders snap to the last solved pose after a Solve.</p>
     </div>
   </div>
 
@@ -459,14 +459,18 @@ async function loadModel(name) {
 
 function startViewer() {
   const sketch = (p) => {
+    // The view takes most of the viewport ("kinda full screen"): the header,
+    // wrap padding and the bottom API hint add up to roughly 200 px.
+    const viewH = () => Math.max(440, window.innerHeight - 200);
+
     p.setup = () => {
       const host = document.getElementById("view3d");
-      cv = p.createCanvas(host.clientWidth || 640, 440, p.WEBGL);
+      cv = p.createCanvas(host.clientWidth || 640, viewH(), p.WEBGL);
       p.pixelDensity(Math.min(2, p.pixelDensity()));
       wireOrbit(cv.elt);
     };
 
-    p.windowResized = () => p.resizeCanvas($("view3d").clientWidth || 640, 440);
+    p.windowResized = () => p.resizeCanvas($("view3d").clientWidth || 640, viewH());
 
     // draw one URDF visual (primitives in px; STL tris pre-scaled)
     const drawVisual = (v) => {
@@ -683,12 +687,12 @@ function buildPoseSliders() {
   for (let i = 0; i < 7; i++) {
     const [lo, hi] = (lims && lims[i]) || [-Math.PI, Math.PI];
     const row = document.createElement("div");
-    row.className = "poserow";
+    row.className = "poseblock";
     row.innerHTML =
-      '<span class="pname">J' + (i + 1) + "</span>" +
+      '<div class="posehead"><span class="pname">J' + (i + 1) +
+      '</span><span class="pread">0.0°</span></div>' +
       '<input type="range" min="' + lo + '" max="' + hi +
-      '" step="0.01" value="0">' +
-      '<span class="pread">0.0°</span>';
+      '" step="0.01" value="0">';
     const sl = row.querySelector("input");
     const rd = row.querySelector(".pread");
     host.appendChild(row);
