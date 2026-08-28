@@ -23,6 +23,9 @@
   select, input[type=text], input[type=number] {
     width:100%; background:#0d1117; color:var(--txt); border:1px solid var(--line);
     border-radius:6px; padding:7px 9px; font:inherit; }
+  .axis { display:block; color:var(--dim); font-size:11px; letter-spacing:.05em;
+          text-transform:uppercase; margin:2px 0 2px; }
+  input[type=range] { width:100%; margin:0 0 4px; accent-color:var(--acc); }
   .row { display:flex; gap:8px; }
   .row > div { flex:1; }
   button { margin-top:14px; width:100%; padding:9px; border:0; border-radius:6px;
@@ -66,11 +69,23 @@
         <option value="ccd">ccd (p5 POC port)</option>
       </select>
 
-      <label>Target position (mm, like the p5 POC sliders)</label>
+      <label>Target position (mm)</label>
       <div class="row">
-        <div><input type="number" id="tx" value="450" step="10"></div>
-        <div><input type="number" id="ty" value="250" step="10"></div>
-        <div><input type="number" id="tz" value="450" step="10"></div>
+        <div>
+          <span class="axis">x</span>
+          <input type="range" id="txs" min="-600" max="600" step="5" value="450">
+          <input type="number" id="tx" value="450" step="10">
+        </div>
+        <div>
+          <span class="axis">y</span>
+          <input type="range" id="tys" min="-600" max="600" step="5" value="250">
+          <input type="number" id="ty" value="250" step="10">
+        </div>
+        <div>
+          <span class="axis">z</span>
+          <input type="range" id="tzs" min="0" max="800" step="5" value="450">
+          <input type="number" id="tz" value="450" step="10">
+        </div>
       </div>
 
       <label for="quat">Orientation [x y z w] — empty = position-only</label>
@@ -544,6 +559,23 @@ function startViewer() {
   new p5(sketch, document.getElementById("view3d"));
   document.querySelectorAll(".preset").forEach((b) =>
     b.addEventListener("click", () => setView(b.dataset.view)));
+}
+
+// Target position: sliders and number inputs stay in sync, and the 3D
+// marker follows either control live (no Solve needed to move it).
+function moveTarget() {
+  const raw = [$("tx").value, $("ty").value, $("tz").value];
+  if (raw.some((s) => s.trim() === "")) return;  // keep last position
+  scene.targetM = raw.map((s) => +s / 1000);
+}
+for (const a of "xyz") {
+  const num = $("t" + a), sl = $("t" + a + "s");
+  sl.addEventListener("input", () => { num.value = sl.value; moveTarget(); });
+  num.addEventListener("input", () => {
+    if (num.value.trim() !== "" && Number.isFinite(+num.value))
+      sl.value = Math.min(+sl.max, Math.max(+sl.min, +num.value));
+    moveTarget();
+  });
 }
 
 let lastQ = null;
