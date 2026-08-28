@@ -6,7 +6,8 @@
 >
 > Last updated: 2026-08-28 — second-machine onboarding done (both builds
 > green, 26 ctest + 44 pytest; two CMake build fixes); URDF-driven 3D viewer
-> done (applyMatrix fix `cebb2ae`); Blender add-on is the next item.
+> done (applyMatrix fix `cebb2ae`); Windows launcher scripts added
+> (`start_service.bat` / `stop_service.bat`); Blender add-on is the next item.
 
 ## 1. Project in one paragraph
 
@@ -60,6 +61,17 @@ pytest tests/ -q -p no:cacheprovider           # 44 tests
 python -m service.main                         # http://127.0.0.1:8081/
 ```
 
+Windows launcher helpers (repo root, CRLF, self-contained): `start_service.bat`
+starts the service in its own "ik_service" console window, polls `/health`
+and opens the web demo; if an instance already owns the port it reports the
+PID and only opens the browser, and `start_service.bat /restart` kills the
+running instance first (refuses to kill any PID that is not `python.exe`)
+before starting fresh. `stop_service.bat` stops the running instance
+(graceful `taskkill /PID`, then `taskkill /F` after 5 s, then verifies the
+port is free). Port discovery uses PowerShell `Get-NetTCPConnection` because
+`netstat` state names are localized on non-English systems; in-window sleeps
+use loopback `ping`, since `timeout.exe` aborts under redirected stdin.
+
 ## 4. Current state
 
 Done:
@@ -79,6 +91,8 @@ Done:
       + test green on Python 3.13.5 / CMake 3.27.0-rc3; two build fixes
       (core install interface, service sibling-folder spelling) — see
       §7 machine notes
+- [x] Windows launcher scripts `start_service.bat` / `stop_service.bat`
+      (start / stop / `/restart`, browser open, PID-verified kills)
 
 In progress / next up:
 - [ ] **Blender 4.x add-on** (roadmap §3.1). Prerequisites: `pick_ik_c` C ABI
