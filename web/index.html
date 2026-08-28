@@ -11,17 +11,20 @@
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--txt);
          font:14px/1.45 "Segoe UI", system-ui, sans-serif; }
-  .wrap { max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
+  .wrap { max-width:1240px; margin:0 auto; padding:24px 20px 60px; }
   h1 { font-size:20px; font-weight:600; margin:0 0 4px; }
   .sub { color:var(--dim); margin:0 0 20px; font-size:13px; }
-  .grid { display:grid; grid-template-columns:340px 1fr; gap:16px; }
-  .col { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .grid { display:grid; grid-template-columns:220px 350px minmax(0,1fr);
+          gap:16px; align-items:start; }
   .poserow { display:grid; grid-template-columns:28px 1fr 52px; gap:8px;
              align-items:center; margin:5px 0; }
   .poserow .pname { color:var(--txt); font-weight:600; font-size:12px; }
   .poserow .pread { color:var(--acc); font:11px Consolas, monospace;
                     text-align:right; }
-  @media (max-width: 800px) { .grid { grid-template-columns:1fr; } }
+  @media (max-width: 1100px) { .grid { grid-template-columns:220px minmax(0,1fr); }
+    .view { grid-column:1 / -1; } }
+  @media (max-width: 720px) { .grid { grid-template-columns:1fr; }
+    .view { grid-column:auto; } }
   .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; }
   .panel h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em;
               color:var(--dim); margin:0 0 12px; font-weight:600; }
@@ -69,7 +72,13 @@
      <code>POST /solve</code>.</p>
 
   <div class="grid">
-    <div class="col">
+    <div class="panel" id="posePanel">
+      <h2>Joint pose (FK)</h2>
+      <div id="poseRows"></div>
+      <p class="hint">drag to pose the arm live via <code>POST /fk</code> —
+      sliders snap to the last solved pose after a Solve.</p>
+    </div>
+
     <div class="panel" id="solvePanel">
       <h2>Solve</h2>
       <label for="solver">Solver</label>
@@ -111,7 +120,7 @@
         <div><input type="number" id="memtime" value="0.6" step="0.1"></div>
       </div>
 
-      <label>secondary objective weights (0 = off; realistic md ~0.01, jt ~0.1–0.5, la ~0.01–0.1)</label>
+      <label title="0 = off; realistic ranges: md ~0.01, jt ~0.1–0.5, la ~0.01–0.1">secondary weights md / jt / la (0 = off)</label>
       <div class="row">
         <div><input type="number" id="mdw" value="0" step="0.001" title="minimal displacement weight"></div>
         <div><input type="number" id="jtw" value="0" step="0.01" title="joint angle targets weight"></div>
@@ -153,15 +162,7 @@
       targets are 300 / 200 / 450 and 450 / 250 / 450 mm.</div>
     </div>
 
-    <div class="panel" id="posePanel">
-      <h2>Joint pose (FK)</h2>
-      <div id="poseRows"></div>
-      <p class="hint">drag to pose the arm live via <code>POST /fk</code> —
-      sliders snap to the last solved pose after a Solve.</p>
-    </div>
-    </div>
-
-    <div class="panel">
+    <div class="panel view">
       <h2>3D view</h2>
       <div class="viewbar">
         <button class="preset" data-view="top">top</button>
