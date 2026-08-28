@@ -4,8 +4,9 @@
 > session by reading this file and updates it before pushing.** A stale
 > handover is worse than none — keep "Current state" / "Next up" truthful.
 >
-> Last updated: 2026-08-28 — both repos public on GitHub; URDF-driven 3D
-> viewer done (applyMatrix fix `cebb2ae`); Blender add-on is the next item.
+> Last updated: 2026-08-28 — second-machine onboarding done (both builds
+> green, 26 ctest + 44 pytest; two CMake build fixes); URDF-driven 3D viewer
+> done (applyMatrix fix `cebb2ae`); Blender add-on is the next item.
 
 ## 1. Project in one paragraph
 
@@ -74,6 +75,10 @@ Done:
       endpoint, STL meshes; applyMatrix column-major fix (`cebb2ae`)
 - [x] Both repos public on GitHub (`git@github.com:SwannSchilling/...`),
       pushed via SSH
+- [x] Second-machine onboarding (swann_gmt71y box, 2026-08-28): full build
+      + test green on Python 3.13.5 / CMake 3.27.0-rc3; two build fixes
+      (core install interface, service sibling-folder spelling) — see
+      §7 machine notes
 
 In progress / next up:
 - [ ] **Blender 4.x add-on** (roadmap §3.1). Prerequisites: `pick_ik_c` C ABI
@@ -137,6 +142,37 @@ Read this file, then `libpick_ik_core/HANDOVER.md`, then run the test suites
 4. Push.
 
 ## 7. Machine notes
+
+**Second machine (swann_gmt71y Windows box, filled in on first use 2026-08-28):**
+- Prereqs all present: Python 3.13.5 default (`C:\Python313`; requirements
+  comment says 3.12 but 3.10+ works), CMake 3.27.0-rc3, VS 2022 Community
+  (MSVC 14.42.34433), git 2.41 + OpenSSH 9.3, network to github/gitlab OK.
+- **No `../.deps` cache** — FetchContent clones Eigen/fmt/Catch2/pybind11
+  from the network at configure time (omit the `FETCHCONTENT_SOURCE_DIR_*`
+  overrides from the commands above on this box).
+- Repos are cloned with the GitHub names: `ik-service/`, `libpick-ik-core/`
+  (hyphens, not the dev machine's underscore spelling). Service CMake now
+  accepts both (`fix: accept libpick-ik-core sibling spelled with hyphen or
+  underscore`).
+- **Build the binding with `-DPYTHON_EXECUTABLE=C:/Python313/python.exe`.**
+  pybind11 v2.13.6's legacy finder otherwise auto-detects an unrelated
+  portable CPython 3.12.13 (`~/.local/bin/python3.12.exe`, the Reachy Mini
+  Control project's embedded build) and produces a `cp312` pyd that the
+  default Python 3.13 cannot load.
+- Remotes are `https://github.com/...` (not the dev machine's SSH
+  remotes) and this box has **no GitHub credentials registered** — commits
+  are possible, pushes are not until a key/PAT is set up.
+- Port 8081 is NOT in the Windows excluded TCP ranges here (the dev
+  machine's port-8000 problem does not apply).
+- Blender 4.5 installed (`C:\Program Files\Blender Foundation`) — ready
+  for the add-on work (§3.1) once `pick_ik_c` lands.
+- 2026-08-28 onboarding result: core builds, 26/26 ctest; service builds
+  (cp313), 44/44 pytest; `/health`, `/solvers`, `/solve` (ccd) smoke-tested
+  OK on 8081. Build fix in the core: RSL includes wrapped in
+  BUILD_INTERFACE/INSTALL_INTERFACE — a raw source path in the install
+  interface made CMake's `install(EXPORT)` generation fatal on any CMake
+  ≥3.22 for out-of-source builds (`fix: keep RSL source include out of the
+  install interface`).
 
 **Machine of this agent (dev machine, LENOVO03):**
 - DSH file sandbox: git's bundled Cygwin `ssh.exe` cannot create named pipes,
