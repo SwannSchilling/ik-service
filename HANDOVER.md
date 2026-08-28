@@ -9,10 +9,11 @@
 > done (applyMatrix fix `cebb2ae`); Windows launcher scripts added
 > (`start_service.bat` / `stop_service.bat`); desktop-arm rescale
 > decision open (arm7 is currently iiwa-class sized; URDF loading is
-> cosmetic — see §4/§5); desktop-arm design study delivered
-> (`libpick-ik-core/docs/desktop-arm-design-study.md` — Design B, 675 mm,
-> recommended, pending review; no constants changed yet); Blender add-on is
-> the next item.
+> cosmetic — see §4/§5); desktop-arm design study delivered and
+> **Design B (675 mm) approved as the working mechanical target**
+> (`libpick-ik-core/docs/desktop-arm-design-study.md`; two review items
+> tracked in its §10; no constants changed yet); Blender add-on is the
+> next item.
 
 ## 1. Project in one paragraph
 
@@ -106,13 +107,18 @@ In progress / next up:
       desktop build. Full design study:
       `libpick-ik-core/docs/desktop-arm-design-study.md` — candidate scales
       A/B/C (633/675/695 mm) computed against the real actuator data
-      (J2 = CubeMars AK10-9 V2.0: 18/48 Nm, 0.96 kg, Ø98×61.7; J4 = AK70-10:
+      (J2 = CubeMars AK10-9 V2.0: 18/53 Nm, 0.96 kg, Ø98×61.7; J4 = AK70-10:
       8.3/24.8 Nm, 0.521 kg, Ø89×50.25, revision to verify; J1/J3/J5/J6/J7
-      parametric). **Recommendation: Design B (base→J2 180, J2→J4 215,
-      J4→J6 215, J6→tool 65 mm = 675 mm chain)**; ~1.0 kg payload at
-      SF 1.5 on rated (J2 binding, ~6.7 Nm arm-only static); 7-DOF frame
-      convention kept unchanged. No constants have been changed yet —
-      implementation only after review, per the study's §11 checklist
+      parametric). **Design B (base→J2 180, J2→J4 215, J4→J6 215,
+      J6→tool 65 mm = 675 mm chain) approved as the working mechanical
+      target** (review round 1: reach + J2/J4 assignment locked); ~1.0 kg
+      payload at SF 1.5 on rated (J2 binding, ~6.7 Nm arm-only static),
+      7-DOF frame convention unchanged. Review items tracked in the study
+      §10: fold-singularity guard (L2 = L3 degeneracy — empirically excluded
+      by the J4 ±2.09 rad limits, d ≥ 216 mm, clean no-solve verified) and
+      the peak-torque clarification (53 Nm spec-sheet peak; SF 1.5 applied
+      to peak as well). No constants have been changed yet —
+      implementation after the open items, per the study's §11 checklist
       (spec → C++ test ports → `service/arm7.py` → URDF visuals → pytest
       targets → demo ranges/camera, per the §5 triple-port discipline).
 - [ ] **Blender 4.x add-on** (roadmap §3.1). Prerequisites: `pick_ik_c` C ABI
