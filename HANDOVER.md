@@ -159,9 +159,13 @@ Read this file, then `libpick_ik_core/HANDOVER.md`, then run the test suites
   portable CPython 3.12.13 (`~/.local/bin/python3.12.exe`, the Reachy Mini
   Control project's embedded build) and produces a `cp312` pyd that the
   default Python 3.13 cannot load.
-- Remotes are `https://github.com/...` (not the dev machine's SSH
-  remotes) and this box has **no GitHub credentials registered** — commits
-  are possible, pushes are not until a key/PAT is set up.
+- Remotes are SSH (`git@github.com:SwannSchilling/...`), pushed with the
+  dedicated key `~/.ssh/id_ed25519_github_ik` (registered on the GitHub
+  account, comment `ik-repos on swannbox`) — same pattern as the dev
+  machine; the `github.com` block lives in `~/.ssh/config` and the private
+  key is owner-only ACL'd. Verified 2026-08-28: both fix commits pushed.
+  (Note: this key is account-level, like the dev machine's — it can push
+  to every repo the account has write access to, not just the ik-repos.)
 - Port 8081 is NOT in the Windows excluded TCP ranges here (the dev
   machine's port-8000 problem does not apply).
 - Blender 4.5 installed (`C:\Program Files\Blender Foundation`) — ready
