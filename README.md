@@ -19,6 +19,29 @@ p5.js / Python / browser / PyBullet / IsaacSim / Blender / robot
                     FK (Python callback in service/arm7.py)
 ```
 
+## Getting started (fresh machine)
+
+1. **Prereqs:** Python 3.10+ (dev machine uses MS-Store CPython 3.12.28),
+   CMake ≥ 3.22, a C++17 compiler (dev machine: Visual Studio 2022 / MSVC),
+   and either network access (FetchContent) or a `../.deps` dependency cache.
+2. **Clone both repos as siblings** (this repo builds `../libpick_ik_core`):
+   ```sh
+   git clone https://github.com/SwannSchilling/libpick-ik-core.git
+   git clone https://github.com/SwannSchilling/ik-service.git
+   ```
+3. **Build, test, run:**
+   ```sh
+   cd ik_service
+   pip install -r requirements.txt
+   cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+   cmake --build build --config RelWithDebInfo   # -> dist/pickik.pyd
+   pytest tests/ -q -p no:cacheprovider          # 44 tests
+   python -m service.main                        # http://127.0.0.1:8081/
+   ```
+
+The `HANDOVER.md` in this repo is the machine-agnostic project resume — read
+it when picking the project up.
+
 ## Layout
 
 ```
@@ -32,7 +55,7 @@ ik_service/
         arm7.py           pure-Python arm7 FK + Robot + limits (the model)
         app.py            FastAPI app (endpoints + demo page)
         main.py           uvicorn runner
-    web/index.html        demo: solver dropdown + target + live 2D view
+    web/index.html        demo: solver dropdown + target + URDF-driven 3D view
     tests/                pytest: FK anchors, binding, API (in-process client)
     dist/                 pickik.pyd lands here after the CMake build
 ```
@@ -45,8 +68,10 @@ Python deps (already satisfied in this workspace):
 pip install -r requirements.txt
 ```
 
-The C++ binding (from this directory). Pybind11 is vendored like Eigen/fmt
-via the `../.deps` fetch overrides (no network needed at configure time):
+The C++ binding (from this directory). The `FETCHCONTENT_SOURCE_DIR_*`
+overrides are optional and machine-local: the `../.deps` cache is **not part
+of this repo**; where it is absent, FetchContent clones Eigen/fmt/pybind11
+from the network instead:
 
 ```sh
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 \
@@ -133,9 +158,10 @@ Solver list, liveness, and the demo page.
 ## Notes / gotchas
 
 - **Threading**: the memetic solver evaluates FK from worker threads; a
-  Python FK callback re-acquires the GIL on every call, so with a Python FK
-  keep `num_threads` at 1–2 (default here: 4 is fine — the GIL serializes, it
-  just won't parallelize).
+  Python FK callback is serialized through the GIL pump, so extra
+  `num_threads` only add queue traffic — the service default is 1 (see
+  `libpick_ik_core/docs/integration-roadmap.md` §2.4). Native FK hosts
+  (no Python callback) should raise it.
 - **Time budgets**: the gradient search is wall-clock bounded (`max_time`);
   the deep-fold target A needs a wide budget (defaults here: 2 s / 2000 iter).
 - **p5.js**: fetch the endpoint exactly as in the demo page; the p5 sketch
