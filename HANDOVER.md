@@ -7,7 +7,9 @@
 > Last updated: 2026-08-28 — second-machine onboarding done (both builds
 > green, 26 ctest + 44 pytest; two CMake build fixes); URDF-driven 3D viewer
 > done (applyMatrix fix `cebb2ae`); Windows launcher scripts added
-> (`start_service.bat` / `stop_service.bat`); Blender add-on is the next item.
+> (`start_service.bat` / `stop_service.bat`); desktop-arm rescale
+> decision open (arm7 is currently iiwa-class sized; URDF loading is
+> cosmetic — see §4/§5); Blender add-on is the next item.
 
 ## 1. Project in one paragraph
 
@@ -95,6 +97,18 @@ Done:
       (start / stop / `/restart`, browser open, PID-verified kills)
 
 In progress / next up:
+- [ ] **Rescale arm7 to a desktop arm (open design decision).**
+      Current dimensions (links 340/400/400 mm + tool 126 mm → reach
+      ≈ 1.27 m) are KUKA-iiwa-class placeholders, too big for the intended
+      desktop build on CubeMars AK80/AK10-class actuators. Working
+      candidate: proportional scale factor ≈ 0.5 (reach ≈ 630 mm;
+      FR3-equivalent would be ≈ 0.68 / 855 mm). Pure scaling leaves all
+      angular quantities unchanged (joint limits, max velocities, axes,
+      rpy) — only linear dimensions are multiplied. Change checklist:
+      spec → C++ test ports → `service/arm7.py` (§5 triple-port discipline),
+      plus URDF visuals + mesh `scale`, pytest anchors/targets, and the
+      demo's target slider ranges + camera distances. The solver model is
+      hardcoded in code, not read from the URDF — see §5.
 - [ ] **Blender 4.x add-on** (roadmap §3.1). Prerequisites: `pick_ik_c` C ABI
       layer (§3.0a — thin C interface over the `IkSolver` contract, no new
       solver code) and the shared C++ arm7 model header (§3.0b,
@@ -122,6 +136,16 @@ In progress / next up:
   (CAD source of truth, "MATH CONFIRMED"); pytest pins `arm7.py` to the
   spec's §5 anchor poses. Model change → update spec → update all ports →
   re-run the cross-checks.
+- **URDF loading is cosmetic; the solver model is hardcoded in code.**
+  `robot_description/*.urdf` (+ the STLs) is consumed only by the web
+  viewer — it places meshes on the FK frames. The model the solver actually
+  solves against (joint axes/offsets, link geometry via the FK callback,
+  joint limits) comes from `service/arm7.py` (`JOINTS` + `TOOL_OFFSET` →
+  `pickik.make_robot`), ported 1:1 from the spec; the `pickik` binding
+  itself is model-agnostic. Loading a different URDF renders that model
+  but poses it as arm7. A generic / URDF-driven solver is a future item;
+  the roadmap §3.0b model header is the first step toward
+  model/solver decoupling.
 - **Memetic + Python FK:** FK is evaluated on the calling thread through the
   GIL pump; extra `num_threads` only add queue traffic, no parallelism.
   Service default is `num_threads=1` (keep it); native hosts should raise it.
