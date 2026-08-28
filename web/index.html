@@ -456,10 +456,11 @@ function startViewer() {
         const fr = F[i - 1];
         p.push();
         p.translate(fr[0][3] * SCALE, fr[1][3] * SCALE, fr[2][3] * SCALE);
-        // row-major 4x4 (p5 applyMatrix convention, verified empirically)
-        p.applyMatrix(fr[0][0], fr[0][1], fr[0][2], 0,
-                      fr[1][0], fr[1][1], fr[1][2], 0,
-                      fr[2][0], fr[2][1], fr[2][2], 0,
+        // p5 v2.3.2 applyMatrix reads 16 args in column-major order;
+        // FK frame fr is row-major, so pass the 3x3 transposed.
+        p.applyMatrix(fr[0][0], fr[1][0], fr[2][0], 0,
+                      fr[0][1], fr[1][1], fr[2][1], 0,
+                      fr[0][2], fr[1][2], fr[2][2], 0,
                       0, 0, 0, 1);
         for (const v of M.links[i].visuals) drawVisual(v);
         p.pop();
