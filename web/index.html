@@ -31,6 +31,9 @@
   button { margin-top:14px; width:100%; padding:9px; border:0; border-radius:6px;
            background:var(--acc); color:#08121f; font:600 14px inherit; cursor:pointer; }
   button:disabled { opacity:.5; cursor:wait; }
+  label.cont { display:flex; align-items:center; gap:7px; color:var(--txt);
+               margin:14px 0 0; cursor:pointer; }
+  label.cont input { accent-color:var(--acc); margin:0; }
   .result { margin-top:12px; font:12px Consolas, monospace; white-space:pre-wrap;
             background:#0d1117; border:1px solid var(--line); border-radius:6px;
             padding:10px; min-height:56px; color:var(--dim); }
@@ -60,7 +63,7 @@
      <code>POST /solve</code>.</p>
 
   <div class="grid">
-    <div class="panel">
+    <div class="panel" id="solvePanel">
       <h2>Solve</h2>
       <label for="solver">Solver</label>
       <select id="solver">
@@ -132,6 +135,11 @@
           </select>
         </div>
       </div>
+
+      <label class="cont" title="Re-runs Solve (debounced) whenever any input above changes — snappy with the gradient solver">
+        <input type="checkbox" id="cont">
+        Continuous — re-solve as inputs change (arm follows target)
+      </label>
 
       <button id="go">Solve</button>
       <div class="result" id="result">Press Solve — the p5 POC's two cross-check
@@ -592,12 +600,42 @@ async function drawFromQ(q) {
   lastQ = q;
 }
 
+// Continuous mode: while the toggle is on, any change to a solve input
+// re-runs Solve (150 ms debounce, never overlapping) so the arm chases
+// the target. Manual Solve presses share the same busy guard.
+let solveBusy = false, autoDirty = false, autoTimer = null;
+
+function armAutoSolve() {
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(fireAutoSolve, 150);
+}
+async function fireAutoSolve() {
+  autoTimer = null;
+  if (!autoDirty || solveBusy || !$("cont").checked) return;
+  autoDirty = false;
+  try { await runSolve(); } catch (e) { /* shown in the result box */ }
+}
+async function runSolve() {
+  solveBusy = true;
+  try { return await solveAndDraw(); }
+  finally {
+    solveBusy = false;
+    if (autoDirty && $("cont").checked) armAutoSolve();
+  }
+}
+function markDirty() {
+  autoDirty = true;
+  if($("cont").checked && !solveBusy) armAutoSolve();
+}
+$("solvePanel").addEventListener("input", markDirty);
+$("solvePanel").addEventListener("change", markDirty);
+
 $("go").onclick = async () => {
   const btn = $("go"), out = $("result");
   btn.disabled = true; out.className = "result";
   out.textContent = "solving…";
   try {
-    await solveAndDraw();
+    await runSolve();
   } catch (e) {
     out.textContent = "error: " + (e.message || e);
     out.className = "result bad";
