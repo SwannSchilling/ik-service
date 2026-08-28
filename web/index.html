@@ -15,6 +15,12 @@
   h1 { font-size:20px; font-weight:600; margin:0 0 4px; }
   .sub { color:var(--dim); margin:0 0 20px; font-size:13px; }
   .grid { display:grid; grid-template-columns:340px 1fr; gap:16px; }
+  .col { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .poserow { display:grid; grid-template-columns:28px 1fr 52px; gap:8px;
+             align-items:center; margin:5px 0; }
+  .poserow .pname { color:var(--txt); font-weight:600; font-size:12px; }
+  .poserow .pread { color:var(--acc); font:11px Consolas, monospace;
+                    text-align:right; }
   @media (max-width: 800px) { .grid { grid-template-columns:1fr; } }
   .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; }
   .panel h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em;
@@ -63,13 +69,14 @@
      <code>POST /solve</code>.</p>
 
   <div class="grid">
+    <div class="col">
     <div class="panel" id="solvePanel">
       <h2>Solve</h2>
       <label for="solver">Solver</label>
       <select id="solver">
         <option value="memetic" selected>memetic (global)</option>
         <option value="gradient">gradient (local)</option>
-        <option value="ccd">ccd (p5 POC port)</option>
+        <option value="ccd">ccd</option>
       </select>
 
       <label>Target position (mm)</label>
@@ -142,8 +149,16 @@
       </label>
 
       <button id="go">Solve</button>
-      <div class="result" id="result">Press Solve — the p5 POC's two cross-check
-targets are 300 / 200 / 450 and 450 / 250 / 450 mm.</div>
+      <div class="result" id="result">Press Solve — the two CCD cross-check
+      targets are 300 / 200 / 450 and 450 / 250 / 450 mm.</div>
+    </div>
+
+    <div class="panel" id="posePanel">
+      <h2>Joint pose (FK)</h2>
+      <div id="poseRows"></div>
+      <p class="hint">drag to pose the arm live via <code>POST /fk</code> —
+      sliders snap to the last solved pose after a Solve.</p>
+    </div>
     </div>
 
     <div class="panel">
@@ -329,10 +344,20 @@ function parseUrdf(text) {
     return out;
   };
 
+  // kinematic-chain joint limits (drives the FK pose sliders — the POC
+  // built its sliders straight from the URDF limits, kept that)
+  const jointLimits = chain.slice(1).map((l) => {
+    const j = jointEls.find((j) => j.querySelector("child")?.getAttribute("link") === l.getAttribute("name"));
+    const lim = j && j.querySelector("limit");
+    const lo = lim ? parseFloat(lim.getAttribute("lower")) : NaN;
+    const hi = lim ? parseFloat(lim.getAttribute("upper")) : NaN;
+    return [Number.isFinite(lo) ? lo : -Math.PI, Number.isFinite(hi) ? hi : Math.PI];
+  });
   return {
     name: doc.querySelector("robot")?.getAttribute("name") || "unnamed",
     joints: jointEls.length,
     extraLinks,
+    jointLimits,
     links: chain.map((l) => ({
       name: l.getAttribute("name"),
       visuals: [...l.querySelectorAll("visual")].map(parseVisual).filter(Boolean),
@@ -644,6 +669,59 @@ $("go").onclick = async () => {
   }
 };
 
+// Joint pose (FK): sliders pose the arm live via POST /fk. Limits come
+// from the loaded URDF; stale responses are dropped so a fast drag always
+// settles on the last position.
+let poseRows = [];
+let poseSeq = 0;
+function buildPoseSliders() {
+  const host = $("poseRows");
+  host.innerHTML = "";
+  poseRows = [];
+  const lims = scene.model && scene.model.jointLimits;
+  for (let i = 0; i < 7; i++) {
+    const [lo, hi] = (lims && lims[i]) || [-Math.PI, Math.PI];
+    const row = document.createElement("div");
+    row.className = "poserow";
+    row.innerHTML =
+      '<span class="pname">J' + (i + 1) + "</span>" +
+      '<input type="range" min="' + lo + '" max="' + hi +
+      '" step="0.01" value="0">' +
+      '<span class="pread">0.0°</span>';
+    const sl = row.querySelector("input");
+    const rd = row.querySelector(".pread");
+    host.appendChild(row);
+    poseRows.push({ sl, rd });
+    sl.addEventListener("input", () => {
+      rd.textContent = (+sl.value * 57.29578).toFixed(1) + "°";
+      poseArm();
+    });
+  }
+}
+function setPose(q) {
+  for (let i = 0; i < poseRows.length; i++) {
+    const row = poseRows[i];
+    row.sl.value = Math.min(+row.sl.max, Math.max(+row.sl.min, q[i]));
+    row.rd.textContent = (+row.sl.value * 57.29578).toFixed(1) + "°";
+  }
+}
+async function poseArm() {
+  const q = poseRows.map((row) => +row.sl.value);
+  const seq = ++poseSeq;
+  try {
+    const r = await fetch("/fk", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ q }) });
+    const d = await r.json();
+    if (seq !== poseSeq) return;  // a newer tick superseded this one
+    scene.frames = d.frames;
+    scene.toolMm = d.tool0.position_mm;
+    scene.toolOffMm = Math.abs(d.tool0.position_m[1]) * 1000;
+    refreshBadges();
+    lastQ = q;
+  } catch (e) { /* service not reachable — the badges say so */ }
+}
+
 async function solveAndDraw() {
   const targetM = [+ $("tx").value / 1000, + $("ty").value / 1000, + $("tz").value / 1000];
   const body = { solver: $("solver").value, target: { position: targetM } };
@@ -693,6 +771,7 @@ async function solveAndDraw() {
     `\ntime ${d.time_ms.toFixed(1)} ms\nq [deg] = [${d.q.map(v => (v * 57.2958).toFixed(2)).join(", ")}]`;
   out.className = "result " + (d.success ? "ok" : "bad");
   drawFromQ(d.q);
+  setPose(d.q);
   return d.q;
 }
 
@@ -702,6 +781,7 @@ startViewer();
   const model = new URLSearchParams(location.search).get("model") || "arm7";
   try { await loadModel(model); } catch (e) { scene.modelErr = e.message; }
   refreshBadges();
+  buildPoseSliders();
   try { await drawFromQ([0, 0, 0, 0, 0, 0, 0]); } catch (e) {
     $("badges").textContent = "service not reachable on this origin? " + e;
   }
