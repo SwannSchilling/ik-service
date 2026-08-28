@@ -9,7 +9,10 @@
 > done (applyMatrix fix `cebb2ae`); Windows launcher scripts added
 > (`start_service.bat` / `stop_service.bat`); desktop-arm rescale
 > decision open (arm7 is currently iiwa-class sized; URDF loading is
-> cosmetic — see §4/§5); Blender add-on is the next item.
+> cosmetic — see §4/§5); desktop-arm design study delivered
+> (`libpick-ik-core/docs/desktop-arm-design-study.md` — Design B, 675 mm,
+> recommended, pending review; no constants changed yet); Blender add-on is
+> the next item.
 
 ## 1. Project in one paragraph
 
@@ -97,18 +100,21 @@ Done:
       (start / stop / `/restart`, browser open, PID-verified kills)
 
 In progress / next up:
-- [ ] **Rescale arm7 to a desktop arm (open design decision).**
-      Current dimensions (links 340/400/400 mm + tool 126 mm → reach
+- [ ] **Rescale arm7 to a desktop arm — design study done, pending review.**
+      The current dimensions (links 340/400/400 mm + tool 126 mm → reach
       ≈ 1.27 m) are KUKA-iiwa-class placeholders, too big for the intended
-      desktop build on CubeMars AK80/AK10-class actuators. Working
-      candidate: proportional scale factor ≈ 0.5 (reach ≈ 630 mm;
-      FR3-equivalent would be ≈ 0.68 / 855 mm). Pure scaling leaves all
-      angular quantities unchanged (joint limits, max velocities, axes,
-      rpy) — only linear dimensions are multiplied. Change checklist:
-      spec → C++ test ports → `service/arm7.py` (§5 triple-port discipline),
-      plus URDF visuals + mesh `scale`, pytest anchors/targets, and the
-      demo's target slider ranges + camera distances. The solver model is
-      hardcoded in code, not read from the URDF — see §5.
+      desktop build. Full design study:
+      `libpick-ik-core/docs/desktop-arm-design-study.md` — candidate scales
+      A/B/C (633/675/695 mm) computed against the real actuator data
+      (J2 = CubeMars AK10-9 V2.0: 18/48 Nm, 0.96 kg, Ø98×61.7; J4 = AK70-10:
+      8.3/24.8 Nm, 0.521 kg, Ø89×50.25, revision to verify; J1/J3/J5/J6/J7
+      parametric). **Recommendation: Design B (base→J2 180, J2→J4 215,
+      J4→J6 215, J6→tool 65 mm = 675 mm chain)**; ~1.0 kg payload at
+      SF 1.5 on rated (J2 binding, ~6.7 Nm arm-only static); 7-DOF frame
+      convention kept unchanged. No constants have been changed yet —
+      implementation only after review, per the study's §11 checklist
+      (spec → C++ test ports → `service/arm7.py` → URDF visuals → pytest
+      targets → demo ranges/camera, per the §5 triple-port discipline).
 - [ ] **Blender 4.x add-on** (roadmap §3.1). Prerequisites: `pick_ik_c` C ABI
       layer (§3.0a — thin C interface over the `IkSolver` contract, no new
       solver code) and the shared C++ arm7 model header (§3.0b,
