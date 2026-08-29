@@ -41,6 +41,12 @@
   input[type=range] { width:100%; margin:0 0 4px; accent-color:var(--acc); }
   .row { display:flex; gap:8px; }
   .row > div { flex:1; }
+  .row.jt { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  /* number spinners waste ~18px in the dense 340px column; values are typed
+     or stepped via the range sliders next door */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+  input[type=number] { -moz-appearance:textfield; appearance:textfield; }
   button { margin-top:14px; width:100%; padding:9px; border:0; border-radius:6px;
            background:var(--acc); color:#08121f; font:600 14px inherit; cursor:pointer; }
   button:disabled { opacity:.5; cursor:wait; }
@@ -125,7 +131,7 @@
       </div>
 
       <label>joint angle targets (rad, empty = no target)</label>
-      <div class="row">
+      <div class="row jt">
         <div><input type="number" id="jt1" step="0.1" placeholder="J1"></div>
         <div><input type="number" id="jt2" step="0.1" placeholder="J2"></div>
         <div><input type="number" id="jt3" step="0.1" placeholder="J3"></div>
