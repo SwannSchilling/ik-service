@@ -12,16 +12,17 @@ import pytest
 from service import arm7
 
 # (name, q, expected tool0 position [m], expected tool0 z-axis direction or None)
+# Design B desktop dimensions: 0.180 + 0.215 + 0.215 + 0.065 = 0.675 m chain.
 ANCHORS = [
-    ("zero",           [0.0] * 7,                            (0.0, 0.0, 1.266), (0.0, 0.0, 1.0)),
-    ("yaw",            [math.pi / 2] + [0.0] * 6,            (0.0, 0.0, 1.266), None),
-    ("shoulder fwd",   [0.0, math.pi / 2] + [0.0] * 5,       (0.926, 0.0, 0.340), (1.0, 0.0, 0.0)),
-    ("shoulder back",  [0.0, -math.pi / 2] + [0.0] * 5,      (-0.926, 0.0, 0.340), (-1.0, 0.0, 0.0)),
-    ("shoulder roll",  [0.0, 0.0, math.pi / 2] + [0.0] * 4,  (0.0, 0.0, 1.266), None),
-    ("elbow fwd",      [0.0, 0.0, 0.0, math.pi / 2] + [0.0] * 3, (0.526, 0.0, 0.740), (1.0, 0.0, 0.0)),
-    ("forearm roll",   [0.0, 0.0, 0.0, 0.0, math.pi / 2] + [0.0] * 2, (0.0, 0.0, 1.266), None),
-    ("wrist fwd",      [0.0, 0.0, 0.0, 0.0, 0.0, math.pi / 2, 0.0], (0.126, 0.0, 1.140), (1.0, 0.0, 0.0)),
-    ("tool roll",      [0.0] * 6 + [math.pi / 2],           (0.0, 0.0, 1.266), None),
+    ("zero",           [0.0] * 7,                            (0.0, 0.0, 0.675), (0.0, 0.0, 1.0)),
+    ("yaw",            [math.pi / 2] + [0.0] * 6,            (0.0, 0.0, 0.675), None),
+    ("shoulder fwd",   [0.0, math.pi / 2] + [0.0] * 5,       (0.495, 0.0, 0.180), (1.0, 0.0, 0.0)),
+    ("shoulder back",  [0.0, -math.pi / 2] + [0.0] * 5,      (-0.495, 0.0, 0.180), (-1.0, 0.0, 0.0)),
+    ("shoulder roll",  [0.0, 0.0, math.pi / 2] + [0.0] * 4,  (0.0, 0.0, 0.675), None),
+    ("elbow fwd",      [0.0, 0.0, 0.0, math.pi / 2] + [0.0] * 3, (0.280, 0.0, 0.395), (1.0, 0.0, 0.0)),
+    ("forearm roll",   [0.0, 0.0, 0.0, 0.0, math.pi / 2] + [0.0] * 2, (0.0, 0.0, 0.675), None),
+    ("wrist fwd",      [0.0, 0.0, 0.0, 0.0, 0.0, math.pi / 2, 0.0], (0.065, 0.0, 0.610), (1.0, 0.0, 0.0)),
+    ("tool roll",      [0.0] * 6 + [math.pi / 2],           (0.0, 0.0, 0.675), None),
 ]
 
 TOL = 1e-9  # m — far tighter than any mm-precision readout
@@ -38,7 +39,7 @@ def test_anchor_positions(name, q, pos, z_dir):
 
 def test_zero_pose_is_straight_up():
     tool0 = arm7.tool0_pose([0.0] * 7)
-    np.testing.assert_allclose(tool0[:3, 3], (0.0, 0.0, 1.266), atol=TOL)
+    np.testing.assert_allclose(tool0[:3, 3], (0.0, 0.0, 0.675), atol=TOL)
     np.testing.assert_allclose(tool0[:3, :3], np.eye(3), atol=1e-12)
 
 
@@ -51,7 +52,7 @@ def test_position_invariant_joints_rotate_the_frame():
         q = [0.0] * 7
         q[joint] = math.pi / 2
         tool0 = arm7.tool0_pose(q)
-        np.testing.assert_allclose(tool0[:3, 3], (0.0, 0.0, 1.266), atol=TOL)
+        np.testing.assert_allclose(tool0[:3, 3], (0.0, 0.0, 0.675), atol=TOL)
         np.testing.assert_allclose(tool0[:3, :3], rz, atol=1e-9)
 
 
@@ -60,11 +61,11 @@ def test_link_frame_contract():
     assert len(frames) == 8
     for f in frames:
         assert f.shape == (4, 4)
-    # pivot heights at zero pose: J2/J3 at 0.340, J4/J5 at 0.740, J6/J7 at 1.140
+    # pivot heights at zero pose: J2/J3 at 0.180, J4/J5 at 0.395, J6/J7 at 0.610
     zero = arm7.link_frames([0.0] * 7)
-    np.testing.assert_allclose(zero[1][:3, 3], (0, 0, 0.340), atol=1e-12)
-    np.testing.assert_allclose(zero[3][:3, 3], (0, 0, 0.740), atol=1e-12)
-    np.testing.assert_allclose(zero[5][:3, 3], (0, 0, 1.140), atol=1e-12)
+    np.testing.assert_allclose(zero[1][:3, 3], (0, 0, 0.180), atol=1e-12)
+    np.testing.assert_allclose(zero[3][:3, 3], (0, 0, 0.395), atol=1e-12)
+    np.testing.assert_allclose(zero[5][:3, 3], (0, 0, 0.610), atol=1e-12)
 
 
 def test_fk_callback_rejects_bad_input():

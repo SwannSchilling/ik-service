@@ -4,16 +4,16 @@
 > session by reading this file and updates it before pushing.** A stale
 > handover is worse than none — keep "Current state" / "Next up" truthful.
 >
-> Last updated: 2026-08-28 — second-machine onboarding done (both builds
-> green, 26 ctest + 44 pytest; two CMake build fixes); URDF-driven 3D viewer
-> done (applyMatrix fix `cebb2ae`); Windows launcher scripts added
-> (`start_service.bat` / `stop_service.bat`); desktop-arm rescale
-> decision open (arm7 is currently iiwa-class sized; URDF loading is
-> cosmetic — see §4/§5); desktop-arm design study delivered and
-> **Design B (675 mm) approved as the working mechanical target**
-> (`libpick-ik-core/docs/desktop-arm-design-study.md`; two review items
-> tracked in its §10; no constants changed yet); Blender add-on is the
-> next item.
+> Last updated: 2026-08-28 — **desktop-arm Design B (675 mm) implemented:**
+> all ports rescaled and verified (spec anchors regenerated; ctest 26/26;
+> cross-check + pytest 44/44; URDF visuals rebuilt at the new dimensions;
+> demo sliders/camera rescaled; new cross-check targets 200/100/300 and
+> 300/150/300 mm) — see §4; earlier: second-machine onboarding (both builds
+> green, two CMake build fixes), URDF-driven 3D viewer (applyMatrix fix
+> `cebb2ae`), Windows launcher scripts (`start_service.bat` /
+> `stop_service.bat`); the rescale study (`libpick-ik-core/docs/
+> desktop-arm-design-study.md`) is closed at "implemented" with its §11
+> checklist annotated; Blender add-on is the next item.
 
 ## 1. Project in one paragraph
 
@@ -99,28 +99,33 @@ Done:
       §7 machine notes
 - [x] Windows launcher scripts `start_service.bat` / `stop_service.bat`
       (start / stop / `/restart`, browser open, PID-verified kills)
+- [x] **Rescale arm7 to a desktop arm — Design B implemented (2026-08).**
+      The iiwa-class POC dimensions (340/400/400 mm + tool 126 mm →
+      1.266 m) were replaced by **Design B (base→J2 180, J2→J4 215,
+      J4→J6 215, J6→tool 65 mm = 675 mm chain)** per the study
+      (`libpick-ik-core/docs/desktop-arm-design-study.md`, status:
+      implemented, §11 checklist annotated). J2 = CubeMars AK10-9 V2.0 KV60
+      (18/53 Nm, Ø98×61.7), J4 = AK70-10 (8.3/24.8 Nm, Ø89×50.25 — revision
+      to verify); J1/J3/J5/J6/J7 and structural masses remain open
+      (study §10). Joint convention, limits (±π / ±2.09), velocities and
+      axes unchanged — only the four linear constants moved, in every port:
+      spec §5 anchors regenerated (zero (0,0,0.675), shoulder fwd
+      (0.495,0,0.180), elbow fwd (0.280,0,0.395), wrist fwd
+      (0.065,0,0.610)); C++ test ports + `arm7_cross_check` rebuilt
+      (ctest 26/26; new cross-check targets **200/100/300** (deep fold —
+      CCD pins J6 at the 2.09 limit) and **300/150/300 mm** (moderate, no
+      pinned joints) solved by all three solvers); `service/arm7.py` +
+      pytest (44/44, anchors + targets + service smoke: /fk zero pose
+      675 mm, /solve both targets, clean no-solve at the ≈0.151 m inner
+      boundary); URDF visuals rebuilt at the new dimensions (50–60 mm
+      structural links, motor-sized pivot spheres, effort attrs 18 / 8.3
+      Nm); demo sliders x/y −550…550, z 0…650, defaults 300/150/300, camera
+      1.8 m (clamp 0.3–3.0), grid ±0.6 m. Fold degeneracy (study §6.1):
+      d(θ4) = 2·0.215·cos(θ4/2) stays ≥ 0.216 m under the ±2.09 limits, so
+      the degenerate fold is out of the limit box — open item: soft
+      penalty for d < 0.300 m.
 
 In progress / next up:
-- [ ] **Rescale arm7 to a desktop arm — design study done, pending review.**
-      The current dimensions (links 340/400/400 mm + tool 126 mm → reach
-      ≈ 1.27 m) are KUKA-iiwa-class placeholders, too big for the intended
-      desktop build. Full design study:
-      `libpick-ik-core/docs/desktop-arm-design-study.md` — candidate scales
-      A/B/C (633/675/695 mm) computed against the real actuator data
-      (J2 = CubeMars AK10-9 V2.0: 18/53 Nm, 0.96 kg, Ø98×61.7; J4 = AK70-10:
-      8.3/24.8 Nm, 0.521 kg, Ø89×50.25, revision to verify; J1/J3/J5/J6/J7
-      parametric). **Design B (base→J2 180, J2→J4 215, J4→J6 215,
-      J6→tool 65 mm = 675 mm chain) approved as the working mechanical
-      target** (review round 1: reach + J2/J4 assignment locked); ~1.0 kg
-      payload at SF 1.5 on rated (J2 binding, ~6.7 Nm arm-only static),
-      7-DOF frame convention unchanged. Review items tracked in the study
-      §10: fold-singularity guard (L2 = L3 degeneracy — empirically excluded
-      by the J4 ±2.09 rad limits, d ≥ 216 mm, clean no-solve verified) and
-      the peak-torque clarification (53 Nm spec-sheet peak; SF 1.5 applied
-      to peak as well). No constants have been changed yet —
-      implementation after the open items, per the study's §11 checklist
-      (spec → C++ test ports → `service/arm7.py` → URDF visuals → pytest
-      targets → demo ranges/camera, per the §5 triple-port discipline).
 - [ ] **Blender 4.x add-on** (roadmap §3.1). Prerequisites: `pick_ik_c` C ABI
       layer (§3.0a — thin C interface over the `IkSolver` contract, no new
       solver code) and the shared C++ arm7 model header (§3.0b,
@@ -143,11 +148,17 @@ In progress / next up:
 - **p5's world is pixel-scale** (demo uses SCALE = 300 px/m); camera
   up-vector is `(0,0,-1)`; `stroke()` renders nothing on closed 3D surfaces.
 - **The arm7 model is triple-ported** (C++ `tests/arm7_fk.hpp` /
-  `examples/arm7_cross_check`, Python `service/arm7.py`, JS in the p5 POC).
+  `examples/arm7_cross_check`, Python `service/arm7.py`, plus the URDF in
+  `robot_description/` which must mirror the chain; the historical JS port
+  is the machine-local p5 POC, superseded by `web/index.html`).
   `libpick_ik_core/docs/arm7-kinematic-spec.md` is the single source of truth
   (CAD source of truth, "MATH CONFIRMED"); pytest pins `arm7.py` to the
-  spec's §5 anchor poses. Model change → update spec → update all ports →
-  re-run the cross-checks.
+  spec's §5 anchor poses. Model change → C++ table first, re-run
+  `arm7_cross_check` + ctest, then propagate (spec §7).
+  Known solver quirk (found during the Design B rescale): the memetic's
+  random population seeding can stall at the seed on full-pose goals with
+  large orientation deltas (upstream behavior — use gradient for those);
+  position-only targets are unaffected.
 - **URDF loading is cosmetic; the solver model is hardcoded in code.**
   `robot_description/*.urdf` (+ the STLs) is consumed only by the web
   viewer — it places meshes on the FK frames. The model the solver actually

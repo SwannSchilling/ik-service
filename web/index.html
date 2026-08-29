@@ -89,18 +89,18 @@
       <div class="row">
         <div>
           <span class="axis">x</span>
-          <input type="range" id="txs" min="-600" max="600" step="5" value="450">
-          <input type="number" id="tx" value="450" step="10">
+          <input type="range" id="txs" min="-550" max="550" step="5" value="300">
+          <input type="number" id="tx" value="300" step="10">
         </div>
         <div>
           <span class="axis">y</span>
-          <input type="range" id="tys" min="-600" max="600" step="5" value="250">
-          <input type="number" id="ty" value="250" step="10">
+          <input type="range" id="tys" min="-550" max="550" step="5" value="150">
+          <input type="number" id="ty" value="150" step="10">
         </div>
         <div>
           <span class="axis">z</span>
-          <input type="range" id="tzs" min="0" max="800" step="5" value="450">
-          <input type="number" id="tz" value="450" step="10">
+          <input type="range" id="tzs" min="0" max="650" step="5" value="300">
+          <input type="number" id="tz" value="300" step="10">
         </div>
       </div>
 
@@ -155,8 +155,8 @@
       </label>
 
       <button id="go">Solve</button>
-      <div class="result" id="result">Press Solve — the two CCD cross-check
-      targets are 300 / 200 / 450 and 450 / 250 / 450 mm.</div>
+      <div class="result" id="result">Press Solve — the two cross-check targets
+      are 200 / 100 / 300 and 300 / 150 / 300 mm.</div>
     </div>
 
     <div class="panel view">
@@ -183,7 +183,7 @@
     <div class="panel reserve" id="apiPanel">
       <h2>API</h2>
       <p class="hint"><code>POST /solve</code> with
-      <code>{"solver":"gradient","target":{"position":[0.45,0.25,0.45]}}</code>
+      <code>{"solver":"gradient","target":{"position":[0.30,0.15,0.30]}}</code>
       — full docs at <code>/docs</code>. FK readout: <code>POST /fk</code> with
       <code>{"q":[j1..j7]}</code>.</p>
     </div>
@@ -232,20 +232,20 @@ const $ = (id) => document.getElementById(id);
 const SCALE = 300;  // p5 world units (≈ px) per meter
 const scene = {
   frames: null,        // 8 FK frames: [link1..link7, tool0]
-  targetM: [0.45, 0.25, 0.45],
+  targetM: [0.30, 0.15, 0.30],
   toolMm: null,        // last tool0 position (mm), for the badge
   toolOffMm: 0,
   model: null,         // parsed URDF { name, links: [{name, visuals: []}] }
   modelErr: null,
 };
-const view = { yaw: 0.9, pitch: 0.38, dist: 3.3 };  // dist in meters
+const view = { yaw: 0.9, pitch: 0.38, dist: 1.8 };  // dist in meters
 let cv = null;
 
 const VIEW_PRESETS = {
-  top:    { yaw: 0.9, pitch: 1.42, dist: 3.0 },
-  front:  { yaw: 0.0, pitch: 0.02, dist: 3.3 },
-  side:   { yaw: Math.PI / 2, pitch: 0.02, dist: 3.3 },
-  angled: { yaw: 0.9, pitch: 0.38, dist: 3.3 },
+  top:    { yaw: 0.9, pitch: 1.42, dist: 1.6 },
+  front:  { yaw: 0.0, pitch: 0.02, dist: 1.8 },
+  side:   { yaw: Math.PI / 2, pitch: 0.02, dist: 1.8 },
+  angled: { yaw: 0.9, pitch: 0.38, dist: 1.8 },
 };
 
 function setView(name) {
@@ -539,7 +539,7 @@ function startViewer() {
         D * Math.cos(view.pitch) * Math.cos(view.yaw),
         D * Math.sin(view.pitch),
       ];
-      p.camera(eye[0], eye[1], eye[2], 0, 0, 0.5 * SCALE, 0, 0, -1);
+      p.camera(eye[0], eye[1], eye[2], 0, 0, 0.3 * SCALE, 0, 0, -1);
       p.ambientLight(110, 110, 110);
       p.directionalLight(190, 190, 200, 0.4, 0.5, -0.6);
       p.directionalLight(80, 80, 90, -0.5, -0.4, 0.4);
@@ -548,8 +548,8 @@ function startViewer() {
       p.push();
       p.stroke(44, 54, 68); p.strokeWeight(1);
       for (let i = -4; i <= 4; i++) {
-        p.line(i * 0.25 * SCALE, -SCALE, 0, i * 0.25 * SCALE, SCALE, 0);
-        p.line(-SCALE, i * 0.25 * SCALE, 0, SCALE, i * 0.25 * SCALE, 0);
+        p.line(i * 0.15 * SCALE, -0.6 * SCALE, 0, i * 0.15 * SCALE, 0.6 * SCALE, 0);
+        p.line(-0.6 * SCALE, i * 0.15 * SCALE, 0, 0.6 * SCALE, i * 0.15 * SCALE, 0);
       }
       p.pop();
 
@@ -600,7 +600,7 @@ function startViewer() {
     window.addEventListener("mouseup", () => { down = false; });
     canvasEl.addEventListener("wheel", (e) => {
       e.preventDefault();
-      view.dist = Math.min(6.0, Math.max(0.5, view.dist * (1 + e.deltaY * 0.001)));
+      view.dist = Math.min(3.0, Math.max(0.3, view.dist * (1 + e.deltaY * 0.001)));
       clearPresets();
     }, { passive: false });
   };

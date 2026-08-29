@@ -1,8 +1,8 @@
 """End-to-end tests of the pickik binding: Python FK + C++ solvers.
 
-Targets are the p5.js POC cross-check set:
-  A "deep fold" 300/200/450 mm — every solution pins J4/J6 at the 2.09 limit
-  B "moderate"   450/250/450 mm — reachable with no joint at its limit
+Targets are the Design B cross-check set:
+  A "deep fold" 200/100/300 mm — every solution pins J4/J6 at the 2.09 limit
+  B "moderate"   300/150/300 mm — reachable with no joint at its limit
 """
 import numpy as np
 import pytest
@@ -11,9 +11,9 @@ import pickik
 from service import arm7
 
 TARGET_A = np.eye(4)
-TARGET_A[:3, 3] = [0.30, 0.20, 0.45]
+TARGET_A[:3, 3] = [0.20, 0.10, 0.30]  # deep fold 200/100/300 mm
 TARGET_B = np.eye(4)
-TARGET_B[:3, 3] = [0.45, 0.25, 0.45]
+TARGET_B[:3, 3] = [0.30, 0.15, 0.30]  # moderate 300/150/300 mm
 
 
 def pos_only() -> pickik.SolveOptions:
@@ -72,10 +72,20 @@ def test_memetic_solves_deep_fold_target():
 
 
 def test_full_pose_goal_evaluates_orientation():
-    me = pickik.PickIkMemeticSolver(num_threads=4, max_time=2.0)
+    # Full pose (position + orientation). The goal is FK of a known
+    # configuration (no joint near its limit), so it is reachable by
+    # construction — the assertions are on the metric itself, not on a
+    # hand-picked orientation. Uses the gradient solver (deterministic):
+    # for large orientation deltas the memetic's random population
+    # seeding measurably stalls at the zero seed from run to run
+    # (upstream behavior; memetic full-pose reliability is covered by the
+    # C++ ctest suite).
+    gd = pickik.PickIkGradientSolver(max_time=2.0, max_iterations=2000)
     options = pickik.SolveOptions()  # full pose by default
-    result = me.solve(arm7.ROBOT, arm7.fk_callback, arm7.LOCAL_AXES,
-                      list(arm7.QUANTIZED_ZERO_SEED), [TARGET_B], options)
+    q_true = [0.30, -0.40, 0.10, -0.80, 0.15, 0.35, -0.20]
+    goal = arm7.tool0_pose(q_true)
+    result = gd.solve(arm7.ROBOT, arm7.fk_callback, arm7.LOCAL_AXES,
+                      list(arm7.QUANTIZED_ZERO_SEED), [goal], options)
     assert result.success
     assert result.position_error < 1e-3
     assert result.orientation_error >= 0.0

@@ -19,7 +19,7 @@ def test_fk_zero_pose_mm_readout():
     assert r.status_code == 200
     d = r.json()
     assert len(d["frames"]) == 8
-    assert d["tool0"]["position_mm"] == [0.0, 0.0, 1266.0]
+    assert d["tool0"]["position_mm"] == [0.0, 0.0, 675.0]
 
 
 def test_fk_rejects_bad_q():
@@ -29,7 +29,7 @@ def test_fk_rejects_bad_q():
 def test_solve_ccd_position_only_moderate_target():
     r = client.post("/solve", json={
         "solver": "ccd",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
     })
     assert r.status_code == 200
     d = r.json()
@@ -44,7 +44,7 @@ def test_solve_ccd_position_only_moderate_target():
 def test_solve_gradient_moderate_target():
     r = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
     })
     assert r.status_code == 200
     assert r.json()["success"] is True
@@ -53,7 +53,7 @@ def test_solve_gradient_moderate_target():
 def test_solve_memetic_deep_fold_target():
     r = client.post("/solve", json={
         "solver": "memetic",
-        "target": {"position": [0.30, 0.20, 0.45]},
+        "target": {"position": [0.20, 0.10, 0.30]},
     })
     assert r.status_code == 200
     assert r.json()["success"] is True
@@ -62,7 +62,7 @@ def test_solve_memetic_deep_fold_target():
 def test_solve_full_pose_with_quaternion():
     r = client.post("/solve", json={
         "solver": "memetic",
-        "target": {"position": [0.45, 0.25, 0.45], "quaternion": [0.0, 0.0, 0.0, 1.0]},
+        "target": {"position": [0.30, 0.15, 0.30], "quaternion": [0.0, 0.0, 0.0, 1.0]},
     })
     assert r.status_code == 200
     d = r.json()
@@ -80,7 +80,7 @@ def test_solve_rounded_quaternion_is_normalized():
     r = client.post("/solve", json={
         "solver": "gradient",
         "target": {
-            "position": [0.45, 0.25, 0.45],
+            "position": [0.30, 0.15, 0.30],
             "quaternion": [0.0, 0.0, 0.7071, 0.7071],  # 90 deg yaw, 4 decimals
         },
         "options": {"max_time": 2.0, "max_iterations": 2000},
@@ -95,7 +95,7 @@ def test_solve_rounded_quaternion_is_normalized():
 def test_solve_zero_quaternion_rejected():
     r = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45], "quaternion": [0.0, 0.0, 0.0, 0.0]},
+        "target": {"position": [0.30, 0.15, 0.30], "quaternion": [0.0, 0.0, 0.0, 0.0]},
     })
     assert r.status_code == 422
 
@@ -105,7 +105,7 @@ def test_solve_minimal_displacement_weight():
     (upstream PickIK's minimal_displacement_weight)."""
     r = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
         "options": {
             "minimal_displacement_weight": 0.01,
             "cost_threshold": 0.05,  # goal check needs room (see solver.hpp)
@@ -124,7 +124,7 @@ def test_solve_memetic_options_forwarded():
     """elite_size / num_threads / population_size reach the solver."""
     r = client.post("/solve", json={
         "solver": "memetic",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
         "options": {
             "elite_size": 2,
             "population_size": 8,
@@ -143,7 +143,7 @@ def test_solve_joint_angle_targets():
     (load-bearing joints like J4 cannot — see the ctest notes)."""
     plain = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
         "options": {"max_time": 2.0, "max_iterations": 2000},
     }).json()
     assert plain["success"] is True
@@ -151,7 +151,7 @@ def test_solve_joint_angle_targets():
     targets = [None, None, None, None, j5_target, None, None]
     targeted = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
         "options": {
             "joint_angle_targets": targets,
             "joint_target_weight": 0.3,
@@ -172,7 +172,7 @@ def test_solve_look_at():
     a plain solve."""
     import math
 
-    point = [1.5, 0.0, 0.45]
+    point = [0.8, 0.0, 0.30]  # ~arm-length distance out (Design B)
 
     def alignment(q):
         fk = client.post("/fk", json={"q": q}).json()
@@ -186,12 +186,12 @@ def test_solve_look_at():
 
     plain = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
         "options": {"max_time": 2.0, "max_iterations": 2000},
     }).json()
     looking = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
         "options": {
             "look_at": {"point": point, "axis": [1.0, 0.0, 0.0]},
             "look_at_weight": 0.05,
@@ -210,7 +210,7 @@ def test_solve_look_at():
 def test_solve_joint_targets_bad_length():
     r = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
         "options": {"joint_angle_targets": [0.1, 0.2, 0.3]},
     })
     assert r.status_code == 422
@@ -219,7 +219,7 @@ def test_solve_joint_targets_bad_length():
 def test_solve_look_at_bad_point():
     r = client.post("/solve", json={
         "solver": "gradient",
-        "target": {"position": [0.45, 0.25, 0.45]},
+        "target": {"position": [0.30, 0.15, 0.30]},
         "options": {"look_at": {"point": [0.1, 0.2]}},
     })
     assert r.status_code == 422
@@ -229,7 +229,7 @@ def test_solve_custom_seed():
     r = client.post("/solve", json={
         "solver": "ccd",
         "seed": [0.2, -0.4, 0.1, -0.8, 0.1, 0.3, -0.2],
-        "target": {"position": [0.35, 0.20, 0.60]},
+        "target": {"position": [0.25, 0.15, 0.30]},
         "options": {"max_passes": 300},
     })
     assert r.status_code == 200
@@ -238,7 +238,7 @@ def test_solve_custom_seed():
 
 def test_solve_unknown_solver():
     r = client.post("/solve", json={
-        "solver": "nope", "target": {"position": [0.45, 0.25, 0.45]},
+        "solver": "nope", "target": {"position": [0.30, 0.15, 0.30]},
     })
     assert r.status_code == 400
 
@@ -246,7 +246,7 @@ def test_solve_unknown_solver():
 def test_solve_bad_quaternion():
     r = client.post("/solve", json={
         "solver": "ccd",
-        "target": {"position": [0.45, 0.25, 0.45], "quaternion": [0.0, 0.0, 1.0]},
+        "target": {"position": [0.30, 0.15, 0.30], "quaternion": [0.0, 0.0, 1.0]},
     })
     assert r.status_code == 422
 
@@ -292,8 +292,8 @@ def test_model_urdf_chain_matches_solver_arm7():
     assert len(revs) == 7 and len(fixed) == 1
     origins = [j.find("origin").get("xyz") for j in revs]
     assert origins == [
-        "0 0 0", "0 0 0.34", "0 0 0", "0 0 0.40",
-        "0 0 0", "0 0 0.40", "0 0 0",
+        "0 0 0", "0 0 0.18", "0 0 0", "0 0 0.215",
+        "0 0 0", "0 0 0.215", "0 0 0",
     ]
     limits = [
         (j.find("limit").get("lower"), j.find("limit").get("upper")) for j in revs
@@ -307,7 +307,7 @@ def test_model_urdf_chain_matches_solver_arm7():
         j.find("axis").get("xyz") == "0 0 1" for j in revs
     )
     tool = fixed[0]
-    assert tool.find("origin").get("xyz") == "0 0 0.126"
+    assert tool.find("origin").get("xyz") == "0 0 0.065"
     # chain: base -> link1 -> ... -> link7 -> tool_link
     chain = ["base_link"]
     by_parent = {j.find("parent").get("link"): j for j in joints}

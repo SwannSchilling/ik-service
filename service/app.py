@@ -186,7 +186,7 @@ def health() -> dict:
     return {
         "status": "ok",
         "solvers": list(SOLVERS),
-        "arm": "arm7 (POC 7-DOF, meters/radians)",
+        "arm": "arm7 (Design B desktop 7-DOF, meters/radians)",
         "fk": "Python reference (service/arm7.py)",
     }
 

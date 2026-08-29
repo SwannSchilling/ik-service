@@ -15,7 +15,7 @@
     link5      = frames[4]  (after J5, forearm roll)
     link6      = frames[5]  (after J6, wrist pitch)
     link7      = frames[6]  (after J7, tool roll)
-    tool_link  = frames[7]  (tool0, link7 + 0.126 m along its z)
+    tool_link  = frames[7]  (tool0, link7 + 0.065 m along its z)
 
   Conventions:
     * Units are meters / radians.
@@ -32,14 +32,16 @@
 -->
 <robot name="arm7">
 
+  <!-- Design B desktop dimensions (2026-08 rescale; see
+         libpick-ik-core/docs/desktop-arm-design-study.md). -->
   <!-- ================= base ================= -->
   <link name="base_link">
     <visual>
-      <origin xyz="0 0 0.17" rpy="0 0 0"/>
+      <origin xyz="0 0 0.09" rpy="0 0 0"/>
       <geometry>
         <!-- pedestal (cylinder; the old look was a 0.09/0.11 frustum,
              0.10 is indistinguishable at display scale) -->
-        <cylinder length="0.34" radius="0.10"/>
+        <cylinder length="0.18" radius="0.10"/>
       </geometry>
       <material name="pedestal">
         <color rgba="0.235 0.290 0.361 1"/>
@@ -52,16 +54,16 @@
     <child link="link1"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-3.14159" upper="3.14159" effort="100" velocity="2.17"/>
+    <limit lower="-3.14159" upper="3.14159" effort="87" velocity="2.17"/>
   </joint>
 
-  <!-- base column: base -> J2 pivot (0.34 m). Rotates with J1 yaw,
+  <!-- base column: base -> J2 pivot (0.18 m). Rotates with J1 yaw,
        which leaves a vertical on-axis box invariant. -->
   <link name="link1">
     <visual>
-      <origin xyz="0 0 0.17" rpy="0 0 0"/>
+      <origin xyz="0 0 0.09" rpy="0 0 0"/>
       <geometry>
-        <box size="0.08 0.08 0.34"/>
+        <box size="0.08 0.08 0.18"/>
       </geometry>
       <material name="link_blue">
         <color rgba="0.302 0.639 1 1"/>
@@ -72,27 +74,27 @@
   <joint name="joint2" type="revolute">
     <parent link="link1"/>
     <child link="link2"/>
-    <origin xyz="0 0 0.34" rpy="-1.5707963 0 0"/>
+    <origin xyz="0 0 0.18" rpy="-1.5707963 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-2.09" upper="2.09" effort="100" velocity="2.17"/>
+    <limit lower="-2.09" upper="2.09" effort="18" velocity="2.17"/>  <!-- AK10-9 rated -->
   </joint>
 
-  <!-- upper arm: J2 pivot -> J4 pivot (0.40 m). link2's frame points
+  <!-- upper arm: J2 pivot -> J4 pivot (0.215 m). link2's frame points
        its local -y along world +z at zero pose (origin rpy -pi/2), so
        the box sits on local -y. -->
   <link name="link2">
     <visual>
-      <origin xyz="0 -0.20 0" rpy="0 0 0"/>
+      <origin xyz="0 -0.1075 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.08 0.40 0.08"/>
+        <box size="0.06 0.215 0.06"/>
       </geometry>
       <material name="link_blue"/>
     </visual>
     <visual>
-      <!-- J2 pivot sphere -->
+      <!-- J2 pivot sphere (AK10-9 housing, Ø98) -->
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.05"/>
+        <sphere radius="0.055"/>
       </geometry>
       <material name="joint_white">
         <color rgba="0.882 0.910 0.941 1"/>
@@ -105,7 +107,7 @@
     <child link="link3"/>
     <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-3.14159" upper="3.14159" effort="100" velocity="2.17"/>
+    <limit lower="-3.14159" upper="3.14159" effort="87" velocity="2.17"/>
   </joint>
 
   <!-- shoulder roll: pivot coincides with the parent, no geometry -->
@@ -114,25 +116,25 @@
   <joint name="joint4" type="revolute">
     <parent link="link3"/>
     <child link="link4"/>
-    <origin xyz="0 0 0.40" rpy="-1.5707963 0 0"/>
+    <origin xyz="0 0 0.215" rpy="-1.5707963 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-2.09" upper="2.09" effort="100" velocity="2.17"/>
+    <limit lower="-2.09" upper="2.09" effort="8.3" velocity="2.17"/>  <!-- AK70-10 rated -->
   </joint>
 
-  <!-- forearm: J4 pivot -> J6 pivot (0.40 m) -->
+  <!-- forearm: J4 pivot -> J6 pivot (0.215 m) -->
   <link name="link4">
     <visual>
-      <origin xyz="0 -0.20 0" rpy="0 0 0"/>
+      <origin xyz="0 -0.1075 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.08 0.40 0.08"/>
+        <box size="0.06 0.215 0.06"/>
       </geometry>
       <material name="link_blue"/>
     </visual>
     <visual>
-      <!-- J4 pivot sphere -->
+      <!-- J4 pivot sphere (AK70-10 housing, Ø89) -->
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.05"/>
+        <sphere radius="0.048"/>
       </geometry>
       <material name="joint_white"/>
     </visual>
@@ -143,7 +145,7 @@
     <child link="link5"/>
     <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-3.14159" upper="3.14159" effort="100" velocity="2.61"/>
+    <limit lower="-3.14159" upper="3.14159" effort="12" velocity="2.61"/>
   </joint>
 
   <!-- forearm roll: pivot coincides, no geometry -->
@@ -152,25 +154,25 @@
   <joint name="joint6" type="revolute">
     <parent link="link5"/>
     <child link="link6"/>
-    <origin xyz="0 0 0.40" rpy="-1.5707963 0 0"/>
+    <origin xyz="0 0 0.215" rpy="-1.5707963 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-2.09" upper="2.09" effort="100" velocity="2.61"/>
+    <limit lower="-2.09" upper="2.09" effort="12" velocity="2.61"/>
   </joint>
 
-  <!-- wrist: J6 pivot -> tool0 (0.126 m) -->
+  <!-- wrist: J6 pivot -> tool0 (0.065 m) -->
   <link name="link6">
     <visual>
-      <origin xyz="0 -0.063 0" rpy="0 0 0"/>
+      <origin xyz="0 -0.0325 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.08 0.126 0.08"/>
+        <box size="0.06 0.065 0.06"/>
       </geometry>
       <material name="link_blue"/>
     </visual>
     <visual>
-      <!-- J6 pivot sphere -->
+      <!-- J6 pivot sphere (placeholder housing, <= Ø70 motor) -->
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.05"/>
+        <sphere radius="0.038"/>
       </geometry>
       <material name="joint_white"/>
     </visual>
@@ -181,17 +183,17 @@
     <child link="link7"/>
     <origin xyz="0 0 0" rpy="1.5707963 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-3.14159" upper="3.14159" effort="100" velocity="2.61"/>
+    <limit lower="-3.14159" upper="3.14159" effort="12" velocity="2.61"/>
   </joint>
 
   <!-- tool roll: pivot coincides, no geometry -->
   <link name="link7"/>
 
-  <!-- tool0: fixed 0.126 m along link7 z -->
+  <!-- tool0: fixed 0.065 m along link7 z -->
   <joint name="tool_offset" type="fixed">
     <parent link="link7"/>
     <child link="tool_link"/>
-    <origin xyz="0 0 0.126" rpy="0 0 0"/>
+    <origin xyz="0 0 0.065" rpy="0 0 0"/>
   </joint>
 
   <link name="tool_link">
@@ -199,7 +201,7 @@
       <!-- grip knob -->
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.027"/>
+        <sphere radius="0.022"/>
       </geometry>
       <material name="tool_green">
         <color rgba="0.243 0.812 0.557 1"/>
@@ -208,21 +210,21 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.07 0.006 0.006"/>
+        <box size="0.037 0.005 0.005"/>
       </geometry>
       <material name="tool_green"/>
     </visual>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.006 0.07 0.006"/>
+        <box size="0.005 0.037 0.005"/>
       </geometry>
       <material name="tool_green"/>
     </visual>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.006 0.006 0.07"/>
+        <box size="0.005 0.005 0.037"/>
       </geometry>
       <material name="tool_green"/>
     </visual>

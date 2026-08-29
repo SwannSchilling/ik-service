@@ -6,7 +6,8 @@ examples/arm7_cross_check/main.cpp) and the p5.js POC's computeURDFFK:
     base_link at identity;
     for each joint (document order):
         child frame = parent frame * joint origin transform * R(axis, q)
-    tool0 = link7 + 0.126 m along link7 z (fixed joint).
+    tool0 = link7 + 0.065 m along link7 z (fixed joint, Design B desktop
+# dimensions — see libpick-ik-core/docs/desktop-arm-design-study.md).
 
 Units: meters, radians. The p5 display SCALE factor is NOT applied.
 
@@ -32,14 +33,14 @@ _PI = math.pi
 
 JOINTS = [
     (0.000, 0.0, -_PI, _PI, 2.17),       # J1 base yaw
-    (0.340, -_PI / 2, -2.09, 2.09, 2.17),  # J2 shoulder pitch
+    (0.180, -_PI / 2, -2.09, 2.09, 2.17),  # J2 shoulder pitch
     (0.000, _PI / 2, -_PI, _PI, 2.17),    # J3 shoulder roll
-    (0.400, -_PI / 2, -2.09, 2.09, 2.17),  # J4 elbow pitch
+    (0.215, -_PI / 2, -2.09, 2.09, 2.17),  # J4 elbow pitch
     (0.000, _PI / 2, -_PI, _PI, 2.61),    # J5 forearm roll
-    (0.400, -_PI / 2, -2.09, 2.09, 2.61),  # J6 wrist pitch
+    (0.215, -_PI / 2, -2.09, 2.09, 2.61),  # J6 wrist pitch
     (0.000, _PI / 2, -_PI, _PI, 2.61),    # J7 tool roll
 ]
-TOOL_OFFSET = 0.126  # m, link7 -> tool0 (fixed joint)
+TOOL_OFFSET = 0.065  # m, link7 -> tool0 (fixed joint)
 
 # The p5 POC's "all zero" slider state: sliders snap to 0.01 rad steps anchored
 # at each joint's lower limit, so filling 0 yields -0.00159265 on the
