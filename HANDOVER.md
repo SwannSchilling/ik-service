@@ -144,7 +144,7 @@ In progress / next up:
       Solve + 50 ms continuous timer, md weight, status line. Own repo:
       `SwannSchilling/blender_ik_addon` (fe3c162; operator cross-version
       fixes 1a3f449; FK exposure + manual FK sliders 1e52f5d; DLL path
-      pre-select next). Acceptance is 8/8 gates on BOTH 3.4.1 and 4.5.3
+      pre-select 4d8fff5). Acceptance is 8/8 gates on BOTH 3.4.1 and 4.5.3
       (`--factory-startup`): anchors, target B gradient 0.68 mm, target A
       memetic-on-background-thread, out-of-workspace, stall budget,
       end-to-end `bpy.ops`, manual FK through the joint sliders, and the
