@@ -141,14 +141,16 @@ In progress / next up:
 - [x] **Blender 4.x add-on (v1) — done 2026-08-30.** `blender_ik_addon/` at
       the workspace root: ctypes over `pick_ik_c.dll`, empty-object rig +
       target gizmo, solver dropdown (gradient default / ccd / memetic),
-      Solve + 50 ms continuous timer, md weight, status line. 5/5 acceptance
-      gates headless on Blender 4.5.3 (anchors, target B gradient 0.68 mm,
-      target A memetic-on-background-thread 0.8 µm, out-of-workspace,
-      stall p90 ~3.8 ms; also verified on 3.4.1, bl_info min lowered to
-      (3,4,0)). Own repo: `SwannSchilling/blender_ik_addon` (fe3c162;
-      operator cross-version fixes in 1a3f449; FK exposure + manual FK
-      sliders in 1e52f5d). Acceptance is 7/7 gates on BOTH 3.4.1 and
-      4.5.3, incl. end-to-end `bpy.ops` and a manual-FK gate. Joint angles
+      Solve + 50 ms continuous timer, md weight, status line. Own repo:
+      `SwannSchilling/blender_ik_addon` (fe3c162; operator cross-version
+      fixes 1a3f449; FK exposure + manual FK sliders 1e52f5d; DLL path
+      pre-select next). Acceptance is 8/8 gates on BOTH 3.4.1 and 4.5.3
+      (`--factory-startup`): anchors, target B gradient 0.68 mm, target A
+      memetic-on-background-thread, out-of-workspace, stall budget,
+      end-to-end `bpy.ops`, manual FK through the joint sliders, and the
+      auto-found DLL path pre-selecting into the panel field (a user-typed
+      path always wins and is never overwritten; a stale pre-fill can't
+      break discovery — find_dll treats it as candidate #1). Joint angles
       are first-class: `Arm7_Ji.rotation_euler.z` (radians, empties use the
       ZYX euler order), `scene.pickik.q_j1..q_j7` + `tool0_*_mm` scene
       properties, `ik_q_deg` custom property — scriptable/driver-able.
