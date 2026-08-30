@@ -146,11 +146,17 @@ In progress / next up:
       target A memetic-on-background-thread 0.8 µm, out-of-workspace,
       stall p90 ~3.8 ms; also verified on 3.4.1, bl_info min lowered to
       (3,4,0)). Own repo: `SwannSchilling/blender_ik_addon` (fe3c162;
-      operator cross-version fixes in 1a3f449 — acceptance is now 6/6
-      gates on BOTH 3.4.1 and 4.5.3, incl. an end-to-end `bpy.ops`
-      gate). Installed as a *copy* in the 3.4 user addons dir — re-sync
-      after changes. v1.1 backlog: per-joint targets + look-at in the
-      panel (C ABI already plumbs both), optional STL display.
+      operator cross-version fixes in 1a3f449; FK exposure + manual FK
+      sliders in 1e52f5d). Acceptance is 7/7 gates on BOTH 3.4.1 and
+      4.5.3, incl. end-to-end `bpy.ops` and a manual-FK gate. Joint angles
+      are first-class: `Arm7_Ji.rotation_euler.z` (radians, empties use the
+      ZYX euler order), `scene.pickik.q_j1..q_j7` + `tool0_*_mm` scene
+      properties, `ik_q_deg` custom property — scriptable/driver-able.
+      Target X/Y/Z are now sliders (web-demo ranges); J1..J7 degree
+      sliders pose the arm without a solver (Apply FK / Sync from arm).
+      Installed as a *copy* in the 3.4 user addons dir — re-sync after
+      changes. v1.1 backlog: per-joint IK targets + look-at in the panel
+      (C ABI already plumbs both), optional STL display.
 - [ ] Unity native (§3.2) and PyBullet/IsaacSim (§3.3) — next; the C ABI
       (now static-CRT) is the entry point.
 
@@ -176,6 +182,22 @@ In progress / next up:
   stay isolated from installed add-ons (Phobos v2.0.0 on 3.4 also crashes at
   registration: `PHOBOS_OT_define_submodel` — unrelated to us, but it makes
   plain `--background` runs on 3.4 noisy).
+- **Blender euler orders are spelled opposite to their matrix
+  composition.** 'XYZ' computes `Rz @ Ry @ Rx` (X applied first in object
+  space lands rightmost in the matrix). To get the FK step
+  `Rx(roll) @ Rz(q)` use `rotation_mode = 'ZYX'` with components
+  `(roll, 0, q)` — the joint angle stays `rotation_euler.z`. Wrong order
+  silently makes every roll ≠ 0 joint not rotate (probe-verified on
+  3.4.1 and 4.5.3; blender_ik_addon 1e52f5d).
+- **A Blender object that is only parented does not enter the view
+  layer.** Created `Arm7_Tool0` with `collection=None` → its
+  `matrix_world` is never computed from the parent chain (identity
+  forever). Writing `matrix_world` directly masked it; the moment the pose
+  is driven by local transforms, link every rig object to a collection.
+- **Blender RNA/ID properties store ~float32 precision.** Assigning
+  `math.pi/2` to a FloatProperty (or an object euler) reads back
+  `1.5707963705062866` (≈4.4e-8 off) — use 1e-6 tolerances for
+  read-back comparisons, never 1e-9.
 - **p5 v2.3.2 `applyMatrix` reads its 16 arguments in column-major order.**
   FK frames from `/fk` are row-major, so the 3×3 block must be passed
   transposed (column-major). Empirically verified; fixed in `cebb2ae`. Do not
