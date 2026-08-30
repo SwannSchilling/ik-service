@@ -145,15 +145,37 @@ In progress / next up:
       gates headless on Blender 4.5.3 (anchors, target B gradient 0.68 mm,
       target A memetic-on-background-thread 0.8 µm, out-of-workspace,
       stall p90 ~3.8 ms; also verified on 3.4.1, bl_info min lowered to
-      (3,4,0)). Now its own repo: `SwannSchilling/blender_ik_addon`
-      (created via GitHub API, fe3c162). v1.1 backlog: per-joint targets +
-      look-at in the panel (C ABI already plumbs both), optional STL
-      display.
+      (3,4,0)). Own repo: `SwannSchilling/blender_ik_addon` (fe3c162;
+      operator cross-version fixes in 1a3f449 — acceptance is now 6/6
+      gates on BOTH 3.4.1 and 4.5.3, incl. an end-to-end `bpy.ops`
+      gate). Installed as a *copy* in the 3.4 user addons dir — re-sync
+      after changes. v1.1 backlog: per-joint targets + look-at in the
+      panel (C ABI already plumbs both), optional STL display.
 - [ ] Unity native (§3.2) and PyBullet/IsaacSim (§3.3) — next; the C ABI
       (now static-CRT) is the entry point.
 
 ## 5. Expensive lessons (read before touching rendering, model, threading)
 
+- **Blender operator returns are version-dependent.**
+  `{RUNNING_EXECUTABLE}` only exists in Blender 4.x; on 3.x every operator
+  `execute()` that returned it raised `RuntimeError: incompatible return
+  value` (after the work was done — easy to miss). Use `{FINISHED}` for
+  cross-version add-ons (blender_ik_addon, commit 1a3f449).
+- **Blender `matrix_world` reads are stale until the view layer updates.**
+  Immediately after creating empties (or writing `matrix_world`/`location`),
+  reading `matrix_world` back gives identity/old values until
+  `bpy.context.view_layer.update()` — in the GUI the next frame hides it,
+  headless (and fast Build→Solve clicks) do not. The add-on calls the update
+  at the end of `arm7_rig.build()` and before target reads in Solve / the
+  continuous tick.
+- **The add-on is installed in the 3.4 user addons dir**
+  (`%APPDATA%\Blender Foundation\Blender\3.4\scripts\addons\blender_ik_addon`) —
+  a *copy*, not the workspace folder. After add-on changes, re-sync that copy
+  (or the user's 3.4 session keeps the old code; `File > Reload Script` or a
+  restart picks up new files). Acceptance runs use `--factory-startup` to
+  stay isolated from installed add-ons (Phobos v2.0.0 on 3.4 also crashes at
+  registration: `PHOBOS_OT_define_submodel` — unrelated to us, but it makes
+  plain `--background` runs on 3.4 noisy).
 - **p5 v2.3.2 `applyMatrix` reads its 16 arguments in column-major order.**
   FK frames from `/fk` are row-major, so the 3×3 block must be passed
   transposed (column-major). Empirically verified; fixed in `cebb2ae`. Do not
