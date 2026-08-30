@@ -144,7 +144,7 @@ In progress / next up:
       Solve + 50 ms continuous timer, md weight, status line. Own repo:
       `SwannSchilling/blender_ik_addon` (fe3c162; operator cross-version
       fixes 1a3f449; FK exposure + manual FK sliders 1e52f5d; DLL path
-      pre-select 4d8fff5; stale-StructRNA self-heal d098db9; target authority fix 5223781; 3.4
+      pre-select 4d8fff5; stale-StructRNA self-heal d098db9; target authority fix 5223781; live FK sliders e3be643; 3.4
       icon-enum fix ab6f0c0). Acceptance is
       11/11 gates on BOTH 3.4.1 and 4.5.3 (`--factory-startup`): anchors,
       target B gradient 0.68 mm, target A memetic-on-background-thread,
