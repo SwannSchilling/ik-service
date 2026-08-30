@@ -144,13 +144,16 @@ In progress / next up:
       Solve + 50 ms continuous timer, md weight, status line. Own repo:
       `SwannSchilling/blender_ik_addon` (fe3c162; operator cross-version
       fixes 1a3f449; FK exposure + manual FK sliders 1e52f5d; DLL path
-      pre-select 4d8fff5). Acceptance is 8/8 gates on BOTH 3.4.1 and 4.5.3
-      (`--factory-startup`): anchors, target B gradient 0.68 mm, target A
-      memetic-on-background-thread, out-of-workspace, stall budget,
-      end-to-end `bpy.ops`, manual FK through the joint sliders, and the
-      auto-found DLL path pre-selecting into the panel field (a user-typed
-      path always wins and is never overwritten; a stale pre-fill can't
-      break discovery — find_dll treats it as candidate #1). Joint angles
+      pre-select 4d8fff5; stale-StructRNA self-heal d098db9). Acceptance is
+      10/10 gates on BOTH 3.4.1 and 4.5.3 (`--factory-startup`): anchors,
+      target B gradient 0.68 mm, target A memetic-on-background-thread,
+      out-of-workspace, stall budget, end-to-end `bpy.ops`, manual FK
+      through the joint sliders, the auto-found DLL path pre-selecting
+      into the panel field (a user-typed path always wins and is never
+      overwritten; a stale pre-fill can't break discovery — find_dll
+      treats it as candidate #1), and robustness: rig objects deleted in
+      the viewport (partial/full) — operators self-heal, no ReferenceError,
+      no duplicate `.001` objects. Joint angles
       are first-class: `Arm7_Ji.rotation_euler.z` (radians, empties use the
       ZYX euler order), `scene.pickik.q_j1..q_j7` + `tool0_*_mm` scene
       properties, `ik_q_deg` custom property — scriptable/driver-able.
@@ -200,6 +203,22 @@ In progress / next up:
   `math.pi/2` to a FloatProperty (or an object euler) reads back
   `1.5707963705062866` (≈4.4e-8 off) — use 1e-6 tolerances for
   read-back comparisons, never 1e-9.
+- **Never let an exception escape an operator's `execute()`; and never
+  cache StructRNA references blindly.** Deleting a rig empty in the
+  viewport leaves the add-on's module-level `Rig` holding a stale
+  `bpy.types.Object` — any attribute access then raises
+  `ReferenceError: StructRNA of type Object has been removed`. A raw
+  traceback out of `execute()` aborts Blender's UI redraw mid-frame and
+  **collapses the N-panel until restart** (the "panel only shows the
+  status line" bug). Fix pattern (blender_ik_addon): `Rig.alive()`
+  probes cached objects, `_rig_or_die()` self-heals (rebuild via
+  `build()`, which now cleans up *partially* deleted rigs by name —
+  `Rig.find()` returns None for a partial rig, and recreating the same
+  names would auto-rename to `.001`), and every `execute()` wraps its
+  body in `except Exception → _status + report({'ERROR'}) + CANCELLED`.
+  Timer callbacks (`_continuous_tick`, `_drain_pending`) and the bg
+  worker get the same guards; `draw()` is wrapped too and logs
+  tracebacks to `~/pickik_addon_draw_errors.log`.
 - **p5 v2.3.2 `applyMatrix` reads its 16 arguments in column-major order.**
   FK frames from `/fk` are row-major, so the 3×3 block must be passed
   transposed (column-major). Empirically verified; fixed in `cebb2ae`. Do not
