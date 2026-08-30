@@ -219,6 +219,13 @@ In progress / next up:
   Timer callbacks (`_continuous_tick`, `_drain_pending`) and the bg
   worker get the same guards; `draw()` is wrapped too and logs
   tracebacks to `~/pickik_addon_draw_errors.log`.
+- **Icon enums are version-dependent too (second panel-collapse root
+  cause).** `icon='BLANK'` does not exist in Blender 3.4 (only `BLANK1`;
+  `BLANK` is 4.x) — requesting it raises `TypeError` mid-`draw()`, and
+  since the add-on's status line becomes two lines right after Solve,
+  that TypeError hit every Solve. The acceptance test now runs the real
+  `draw()` through a strict 3.4 icon whitelist (gate: "panel draw uses
+  only Blender 3.4 icon enums").
 - **p5 v2.3.2 `applyMatrix` reads its 16 arguments in column-major order.**
   FK frames from `/fk` are row-major, so the 3×3 block must be passed
   transposed (column-major). Empirically verified; fixed in `cebb2ae`. Do not
