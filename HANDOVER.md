@@ -13,7 +13,11 @@
 > `cebb2ae`), Windows launcher scripts (`start_service.bat` /
 > `stop_service.bat`); the rescale study (`libpick-ik-core/docs/
 > desktop-arm-design-study.md`) is closed at "implemented" with its §11
-> checklist annotated; Blender add-on is the next item.
+> checklist annotated; C ABI + shared arm7 header (§3.0a/b/c) landed in
+> libpick-ik-core (c40f47a, 9931105); the Blender 4.x add-on (§3.1 v1) is
+> done and passes its 5-gate headless acceptance on Blender 4.5.3 —
+> including the static-CRT plugin-ABI fix for Blender's pinned MSVCP140
+> (98b000a); remaining: add-on repo hosting decision + §3.2 Unity.
 
 ## 1. Project in one paragraph
 
@@ -23,9 +27,15 @@ ROS/MoveIt-free C++ core (`libpick_ik_core`); a pybind11 binding (`pickik`)
 exposes an `IkSolver` contract (CCD / gradient / memetic); this repo is a
 FastAPI service on top with `/solve`, `/fk`, `/solvers` and a p5.js 3D web
 demo that renders the arm from the URDF + STL meshes in `robot_description/`.
-Next work item: the Blender 4.x add-on (`libpick_ik_core/docs/
-integration-roadmap.md` §3.1), preceded by the `pick_ik_c` C ABI layer
-(§3.0a) and the shared C++ arm7 model header (§3.0b).
+Next work item: Unity native (§3.2), reusing the `pick_ik_c` C ABI (done,
+`libpick_ik_core` §3.0a/b/c: `pickik_c.h` + `pickik_c.cpp`, shared
+`examples/arm7/arm7.hpp`, C-ABI ctest suite; `pick_ik_c` builds with the
+static MSVC CRT so hosts pinning their own older C++ runtime — Blender's
+`blender.crt/msvcp140.dll` 14.29 — cannot break its thread primitives).
+The Blender add-on (§3.1 v1) lives in `blender_ik_addon/` at the workspace
+root (folder not yet a repo — hosting decision pending): ctypes over
+`pick_ik_c.dll`, empty-object rig, target gizmo, solver dropdown, Solve +
+continuous mode; 5/5 acceptance gates on Blender 4.5.3 headless.
 
 ## 2. Repos and layout
 
@@ -126,17 +136,20 @@ Done:
       penalty for d < 0.300 m.
 
 In progress / next up:
-- [ ] **Blender 4.x add-on** (roadmap §3.1). Prerequisites: `pick_ik_c` C ABI
-      layer (§3.0a — thin C interface over the `IkSolver` contract, no new
-      solver code) and the shared C++ arm7 model header (§3.0b,
-      `examples/arm7/arm7.hpp`). Shape: add-on loads `pick_ik_c` via ctypes,
-      target gizmo, solver dropdown, Solve button + optional continuous mode.
-      Acceptance: §3.1 (spec anchors + targets A/B reproduced; no main-thread
-      stall > 4 ms) via the §3.0c validation protocol.
-      **Open decision:** where the add-on code lives — suggested: its own
-      small repo (`blender_ik_addon`) to keep Blender packaging separate from
-      the service.
-- [ ] Unity native (§3.2) and PyBullet/IsaacSim (§3.3) — after Blender.
+- [x] **Blender 4.x add-on (v1) — done 2026-08-30.** `blender_ik_addon/` at
+      the workspace root: ctypes over `pick_ik_c.dll`, empty-object rig +
+      target gizmo, solver dropdown (gradient default / ccd / memetic),
+      Solve + 50 ms continuous timer, md weight, status line. 5/5 acceptance
+      gates headless on Blender 4.5.3 (anchors, target B gradient 0.68 mm,
+      target A memetic-on-background-thread 0.8 µm, out-of-workspace,
+      stall p90 ~3.8 ms).
+      **Open decision (blocks nothing):** where the add-on code lives —
+      suggested: its own small repo (`blender_ik_addon`); no `gh` CLI on
+      this machine, so the repo (if any) must be created from the GitHub
+      web. v1.1 backlog: per-joint targets + look-at in the panel (C ABI
+      already plumbs both), optional STL display.
+- [ ] Unity native (§3.2) and PyBullet/IsaacSim (§3.3) — next; the C ABI
+      (now static-CRT) is the entry point.
 
 ## 5. Expensive lessons (read before touching rendering, model, threading)
 
